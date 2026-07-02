@@ -1,0 +1,17 @@
+{
+  "name": "@md2html/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "md2html": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@md2html/core": "0.1.0",
+    "commander": "^12.1.0",
+    "open": "^10.1.0"
+  },
+  "devDependencies": {}
+}
