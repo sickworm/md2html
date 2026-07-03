@@ -53,7 +53,7 @@ echo "Converting:"
 echo "$input_file"
 echo
 
-node packages/cli/dist/index.js "$input_file" --platform wechat --theme jugg-clean --toc -o "$output_dir" --open
+node packages/cli/dist/index.js "$input_file" --platform wechat --theme jugg-clean-v2 --toc -o "$output_dir" --open
 
 echo
 echo "Done."

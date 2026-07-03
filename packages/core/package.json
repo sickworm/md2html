@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@shikijs/rehype": "^4.3.0",
     "fs-extra": "^11.2.0",
     "hast-util-to-html": "^9.0.0",
     "image-size": "^1.1.1",
@@ -17,8 +18,8 @@
     "remark-gfm": "^4.0.0",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.0.0",
+    "shiki": "^4.3.0",
     "unified": "^11.0.0",
     "unist-util-visit": "^5.0.0"
-  },
-  "devDependencies": {}
+  }
 }

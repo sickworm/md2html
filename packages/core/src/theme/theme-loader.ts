@@ -26,7 +26,7 @@ const defaultConfig: ThemeConfig = {
 /**
  * 加载主题目录中的 CSS 和配置，并补齐默认配置值。
  */
-export async function loadTheme(theme = "jugg-clean"): Promise<LoadedTheme> {
+export async function loadTheme(theme = "jugg-clean-v2"): Promise<LoadedTheme> {
   const directory = theme.includes("/") || theme.includes("\\")
     ? path.resolve(theme)
     : await resolveNamedThemeDirectory(theme);

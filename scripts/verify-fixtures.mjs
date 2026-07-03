@@ -29,7 +29,7 @@ async function verifyBasicFixture() {
     "--platform",
     "wechat",
     "--theme",
-    "jugg-clean",
+    "jugg-clean-v1",
     "--assets-config",
     "examples/basic/article.assets.json",
     "-o",
@@ -80,7 +80,7 @@ async function verifyBasicFixture() {
     "--platform",
     "wechat",
     "--theme",
-    "jugg-clean",
+    "jugg-clean-v1",
     "--assets-config",
     "examples/basic/article.assets.json",
     "-o",
@@ -100,7 +100,7 @@ async function verifyStyleDemoFixture() {
     "--platform",
     "wechat",
     "--theme",
-    "jugg-clean",
+    "jugg-clean-v1",
     "--assets-config",
     path.join(fixtureDir, "article.assets.json"),
     "--toc",
@@ -150,7 +150,7 @@ async function verifyNonLocalImages() {
     "--platform",
     "wechat",
     "--theme",
-    "jugg-clean",
+    "jugg-clean-v1",
     "-o",
     outputDir
   ]);
@@ -184,7 +184,7 @@ async function verifyStrictMissingImageFailure() {
   );
 
   const result = await runCli(
-    [path.join(fixtureDir, "article.md"), "--strict", "--platform", "wechat", "--theme", "jugg-clean", "-o", outputDir],
+    [path.join(fixtureDir, "article.md"), "--strict", "--platform", "wechat", "--theme", "jugg-clean-v1", "-o", outputDir],
     { expectFailure: true }
   );
   assertIncludes(result.stderr, "Strict mode failed: one or more local images are missing");
@@ -197,7 +197,7 @@ async function verifyMissingExplicitAssetsConfigFailure() {
       "--platform",
       "wechat",
       "--theme",
-      "jugg-clean",
+      "jugg-clean-v1",
       "--assets-config",
       path.join(tmpDir, "does-not-exist.json"),
       "-o",
@@ -231,7 +231,7 @@ async function verifyUnsafeHtmlHandling() {
     "--platform",
     "wechat",
     "--theme",
-    "jugg-clean",
+    "jugg-clean-v1",
     "-o",
     outputDir
   ]);
@@ -249,7 +249,7 @@ async function verifyUnsafeHtmlHandling() {
   }
 
   const strictResult = await runCli(
-    [path.join(fixtureDir, "article.md"), "--strict", "--platform", "wechat", "--theme", "jugg-clean", "-o", outputDir],
+    [path.join(fixtureDir, "article.md"), "--strict", "--platform", "wechat", "--theme", "jugg-clean-v1", "-o", outputDir],
     { expectFailure: true }
   );
   assertIncludes(strictResult.stderr, "Strict mode failed: unsafe or unsupported HTML was removed");
@@ -274,7 +274,7 @@ async function verifyOutputResCleanupDoesNotDeleteSources() {
       "--platform",
       "wechat",
       "--theme",
-      "jugg-clean",
+      "jugg-clean-v1",
       "-o",
       fixtureDir
     ],

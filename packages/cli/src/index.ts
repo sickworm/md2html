@@ -12,7 +12,7 @@ program
   .description("Convert Markdown articles to platform-friendly HTML")
   .argument("<input>", "Markdown file")
   .option("--platform <platform>", "generic | wechat | km | lexiang", "generic")
-  .option("--theme <theme>", "theme name or theme directory", "jugg-clean")
+  .option("--theme <theme>", "theme name or theme directory", "jugg-clean-v2")
   .option("-o, --out <dir>", "output directory")
   .option("--assets-config <file>", "article assets JSON file")
   .option("--toc", "generate table of contents", false)

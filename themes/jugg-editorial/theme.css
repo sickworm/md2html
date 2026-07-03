@@ -1,0 +1,414 @@
+/* jugg-editorial 主题
+ * 定位:技术公众号/KM 的“成稿杂志”风格。深色只用于关键锚点,正文保持轻快可读。
+ * 约束:会经 juice 内联,不依赖伪元素、CSS 变量、媒体查询。
+ */
+
+.md2html-article {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 0 34px;
+  color: #1E2A25;
+  background: #FCFDFB;
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+.md2html-article h1 {
+  margin: 24px 0 26px;
+  padding: 20px 20px 18px;
+  color: #10241D;
+  background: #F4FBF7;
+  border-top: 5px solid #10241D;
+  border-right: 1px solid #CFE3D8;
+  border-bottom: 1px solid #CFE3D8;
+  border-left: 14px solid #00C48C;
+  border-radius: 0 12px 12px 0;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.24;
+  box-shadow: 0 10px 24px rgba(16, 36, 29, 0.08);
+}
+
+.md2html-article h2 {
+  margin: 36px 0 16px;
+  padding: 8px 0 9px 13px;
+  color: #10241D;
+  border-left: 7px solid #00C48C;
+  border-top: 2px solid #10241D;
+  border-bottom: 1px solid #D8E6DF;
+  font-size: 21px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.md2html-article h3 {
+  margin: 26px 0 12px;
+  padding: 0 0 7px;
+  color: #0D4C39;
+  border-bottom: 2px solid #B9EAD6;
+  font-size: 18px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.md2html-article h4,
+.md2html-article h5,
+.md2html-article h6 {
+  margin: 20px 0 10px;
+  color: #34443D;
+  font-weight: 800;
+}
+
+.md2html-article p {
+  margin: 14px 0;
+}
+
+.md2html-article strong {
+  color: #10241D;
+  font-weight: 850;
+}
+
+.md2html-article a {
+  color: #007E5B;
+  text-decoration: none;
+  border-bottom: 2px solid #AEEBD6;
+}
+
+.md2html-article img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 24px auto;
+  border: 1px solid #D8E6DF;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(30, 42, 37, 0.08);
+}
+
+.md2html-article img.md2html-inline-image {
+  display: inline-block;
+  margin: 0 2px;
+  vertical-align: middle;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.md2html-article ul,
+.md2html-article ol {
+  margin: 14px 0;
+  padding-left: 24px;
+}
+
+.md2html-article li {
+  margin: 6px 0;
+}
+
+.md2html-article blockquote {
+  margin: 18px 0;
+  padding: 13px 16px;
+  color: #40504A;
+  background: #F6FAF8;
+  border-top: 1px solid #D8E6DF;
+  border-bottom: 1px solid #D8E6DF;
+  border-left: 6px solid #00C48C;
+  border-radius: 0 9px 9px 0;
+}
+
+.md2html-article blockquote p {
+  margin: 6px 0;
+}
+
+.md2html-article code {
+  padding: 2px 6px;
+  color: #005B43;
+  background: #E7F8F0;
+  border: 1px solid #AFE8D2;
+  border-radius: 5px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.md2html-code-block {
+  margin: 22px 0;
+  overflow: hidden;
+  background: #292D3E;
+  border: 1px solid #202638;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(32, 38, 56, 0.18);
+}
+
+.md2html-code-header {
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  background: #F2F6F4;
+  border-bottom: 1px solid #D5E2DC;
+  line-height: 1;
+}
+
+.md2html-code-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.md2html-code-lang {
+  margin-left: 8px;
+  padding: 2px 8px;
+  color: #10241D;
+  background: #FFFFFF;
+  border: 1px solid #CFE3D8;
+  border-radius: 999px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.md2html-code-block pre,
+.md2html-article pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.62;
+}
+
+.md2html-article > pre {
+  margin: 18px 0;
+  border: 1px solid #202638;
+  border-radius: 10px;
+}
+
+.md2html-article pre code {
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  font-size: inherit;
+  -webkit-box-decoration-break: initial;
+  box-decoration-break: initial;
+}
+
+.md2html-callout {
+  margin: 18px 0;
+  padding: 12px 15px;
+  color: #2F3D38;
+  background: #F7F9FF;
+  border: 1px solid #DCE3F3;
+  border-left: 6px solid #4062D8;
+  border-radius: 9px;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(30, 42, 37, 0.05);
+}
+
+.md2html-callout p {
+  margin: 4px 0;
+}
+
+.md2html-callout p:first-child {
+  margin-top: 0;
+}
+
+.md2html-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.md2html-callout-label {
+  margin-right: 7px;
+  color: #3048A3;
+  font-weight: 850;
+}
+
+.md2html-callout-tip {
+  background: #F1FBF6;
+  border-color: #BEEBD7;
+  border-left-color: #00C48C;
+}
+
+.md2html-callout-tip .md2html-callout-label {
+  color: #007E5B;
+}
+
+.md2html-callout-warning {
+  background: #FFF8EB;
+  border-color: #F1D8A8;
+  border-left-color: #D98E04;
+}
+
+.md2html-callout-warning .md2html-callout-label {
+  color: #A35F00;
+}
+
+.md2html-callout-important {
+  background: #FFF3F0;
+  border-color: #F0C8BE;
+  border-left-color: #D64A24;
+}
+
+.md2html-callout-important .md2html-callout-label {
+  color: #A73518;
+}
+
+.md2html-article details {
+  margin: 18px 0;
+  padding: 0 16px;
+  background: #F8FBF9;
+  border: 1px solid #D8E6DF;
+  border-left: 6px solid #00C48C;
+  border-radius: 9px;
+  box-shadow: 0 6px 16px rgba(30, 42, 37, 0.05);
+}
+
+.md2html-article details[open] {
+  padding-bottom: 5px;
+}
+
+.md2html-article summary {
+  padding: 12px 0;
+  color: #10241D;
+  cursor: pointer;
+  font-weight: 850;
+  list-style: none;
+}
+
+.md2html-details-fallback {
+  margin: 18px 0;
+  padding: 0 16px 9px;
+  background: #F8FBF9;
+  border: 1px solid #D8E6DF;
+  border-left: 6px solid #00C48C;
+  border-radius: 9px;
+  box-shadow: 0 6px 16px rgba(30, 42, 37, 0.05);
+}
+
+.md2html-details-summary {
+  margin-bottom: 4px;
+  padding: 12px 0;
+  color: #10241D;
+  border-bottom: 1px solid #D8E6DF;
+  font-weight: 850;
+}
+
+/* 通用表格选择器带 :not(.md2html-metrics),避免指标卡 td 被通用 border 污染(详见指标卡注释) */
+.md2html-article table:not(.md2html-metrics) {
+  width: 100%;
+  margin: 20px 0;
+  overflow: hidden;
+  border: 1px solid #D6E3DD;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 10px;
+  font-size: 15px;
+  box-shadow: 0 6px 16px rgba(30, 42, 37, 0.05);
+}
+
+.md2html-article table:not(.md2html-metrics) th,
+.md2html-article table:not(.md2html-metrics) td {
+  padding: 10px 13px;
+  border-right: 1px solid #D6E3DD;
+  border-bottom: 1px solid #D6E3DD;
+  text-align: left;
+}
+
+.md2html-article table:not(.md2html-metrics) tr td:last-child,
+.md2html-article table:not(.md2html-metrics) tr th:last-child {
+  border-right: none;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.md2html-article table:not(.md2html-metrics) thead th {
+  color: #10241D;
+  background: #E9F7F1;
+  border-bottom: 2px solid #00C48C;
+  font-weight: 850;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:nth-child(even) {
+  background: #F7FAF8;
+}
+
+.md2html-article hr {
+  margin: 30px 0;
+  border: none;
+  border-top: 1px solid #D6E3DD;
+}
+
+.md2html-toc {
+  margin: 22px 0;
+  padding: 15px 18px;
+  background: #F4FBF7;
+  border: 1px solid #CBE5D9;
+  border-left: 6px solid #00C48C;
+  border-radius: 9px;
+}
+
+.md2html-toc-title {
+  margin-bottom: 8px;
+  color: #10241D;
+  font-weight: 850;
+}
+
+.md2html-toc ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.md2html-toc li {
+  margin: 4px 0;
+}
+
+.md2html-toc a {
+  color: #40504A;
+  text-decoration: none;
+}
+
+.md2html-toc-level-3 {
+  margin-left: 12px;
+}
+
+.md2html-metrics {
+  width: 100%;
+  margin: 22px 0;
+  overflow: hidden;
+  background: #10241D;
+  border: 1px solid #10241D;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(16, 36, 29, 0.18);
+}
+
+.md2html-metric {
+  padding: 20px 13px;
+  background: #10241D;
+  border-right: 1px solid #255244;
+  text-align: center;
+}
+
+.md2html-metric:last-child {
+  border-right: none;
+}
+
+.md2html-metric-num {
+  color: #00C48C;
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1.14;
+}
+
+.md2html-metric-label {
+  margin-top: 7px;
+  color: #C3D4CD;
+  font-size: 12px;
+}

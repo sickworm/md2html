@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <title>数据指标卡布局测试 · jugg-clean-v2</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 680px;
+      margin: 40px auto;
+      padding: 0 20px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    h1 {
+      font-size: 22px;
+    }
+
+    h2 {
+      font-size: 16px;
+      margin-top: 48px;
+      margin-bottom: 8px;
+    }
+
+    p.note {
+      font-size: 13px;
+      color: #888;
+      margin: 4px 0 0;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>数据指标卡布局测试 · jugg-clean-v2 主题</h1>
+  <p>用法:浏览器打开 → Cmd/Cmd+A 全选 → 复制 → 粘贴到内部分享平台编辑器。观察三组卡片的<strong>横向排列、圆角 8px、浅灰边框、居中(max-width 560px)、列间距、大数字亮绿色</strong>是否保留。</p>
+
+  <h2>① 对照组:当前 table 版(v2 原样,预期会被平台转表格形变)</h2>
+  <p class="note">border-spacing:24px 0 做列间距,max-width:560px 居中。平台靠 table 标签识别后会覆盖这些。</p>
+  <table style="width:100%;max-width:560px;border-collapse:separate;border-spacing:24px 0;margin:16px auto;font-size:15px;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;background:#ffffff">
+    <tbody>
+      <tr>
+        <td style="text-align:center;width:33.33%;padding:27px 16px;border:none;background:transparent">
+          <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">1.2M</div>
+          <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">月活用户</div>
+        </td>
+        <td style="text-align:center;width:33.33%;padding:27px 16px;border:none;background:transparent">
+          <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">98%</div>
+          <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">次日留存</div>
+        </td>
+        <td style="text-align:center;width:33.33%;padding:27px 16px;border:none;background:transparent">
+          <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">3.5×</div>
+          <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">同比增长</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>② 方案 A:div + flex + gap(推荐,你已验证 flex 可用)</h2>
+  <p class="note">列间距用 gap:24px 替代 border-spacing。重点看平台是否保留 gap 与 max-width 居中。</p>
+  <div style="display:flex;display:-webkit-flex;gap:24px;width:100%;max-width:560px;margin:16px auto;font-size:15px;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;background:#ffffff;box-sizing:border-box">
+    <div style="flex:1;-webkit-flex:1;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">1.2M</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">月活用户</div>
+    </div>
+    <div style="flex:1;-webkit-flex:1;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">98%</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">次日留存</div>
+    </div>
+    <div style="flex:1;-webkit-flex:1;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">3.5×</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">同比增长</div>
+    </div>
+  </div>
+
+  <h2>③ 方案 B:div + inline-block + 百分比(最保守兜底)</h2>
+  <p class="note">width:33.33% + box-sizing:border-box 横向排列;列间距靠 padding 自然撑开(略大于 v2 的 24px,但最稳)。看 box-sizing 与 width% 是否被保留。</p>
+  <div style="width:100%;max-width:560px;margin:16px auto;font-size:0;letter-spacing:-0.31em;border:1px solid #E2E8F0;border-radius:8px;overflow:hidden;background:#ffffff;box-sizing:border-box">
+    <div style="display:inline-block;vertical-align:top;width:33.33%;box-sizing:border-box;font-size:15px;letter-spacing:normal;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">1.2M</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">月活用户</div>
+    </div>
+    <div style="display:inline-block;vertical-align:top;width:33.33%;box-sizing:border-box;font-size:15px;letter-spacing:normal;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">98%</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">次日留存</div>
+    </div>
+    <div style="display:inline-block;vertical-align:top;width:33.33%;box-sizing:border-box;font-size:15px;letter-spacing:normal;text-align:center;padding:27px 16px">
+      <div style="font-size:24px;font-weight:700;color:#10B981;line-height:1.1;font-family:-apple-system,BlinkMacSystemFont,sans-serif">3.5×</div>
+      <div style="font-size:14px;font-weight:400;color:#6b7c74;margin-top:4px">同比增长</div>
+    </div>
+  </div>
+
+  <h2>验证清单(v2 主题重点项)</h2>
+  <ul>
+    <li>三列是否仍<strong>横向排列</strong>在同一行?</li>
+    <li>整体是否<strong>居中</strong>(max-width:560px + margin:auto)?平台常把 margin:auto 居中干掉。</li>
+    <li><strong>圆角 8px</strong> + 浅灰边框 #E2E8F0 是否保留?</li>
+    <li><strong>列间距</strong>:② gap:24px 是否生效?③ 是否可接受(略宽)?</li>
+    <li>大数字 <strong>#10B981 / 24px / weight 700</strong> 是否保留?</li>
+    <li>卡片 <strong>padding 27px</strong> 是否保留(没被压扁)?</li>
+  </ul>
+  <p>把每组达标情况告诉我。若 ② 全保留,我直接按 flex+gap 方案改 <code>remark-callouts.ts</code> 和四个主题 CSS;若 gap 被过滤但横排还在,我改用子项 border-left 模拟分隔或退化到无间距。</p>
+</body>
+
+</html>

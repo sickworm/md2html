@@ -1,0 +1,424 @@
+/* jugg-clean 主题
+ * 说明:产物会经 juice 内联到每个元素的 style 上,以便粘贴到公众号/KM/乐乎。
+ * 因此本文件只用可内联的属性,不使用伪元素(::before)、CSS 变量或媒体查询。
+ * 代码块背景与语法高亮由 Shiki 生成的内联颜色承担,本文件只负责间距与边框。
+ * 深绿双层配色:深墨绿基调 #0D3225(标题/加粗),亮绿强调 #10B981(强调条/标记/数字),
+ * 链接深绿 #0a6b4a(白底可读),浅底 #f2fbf7 / #e8f7f0,边框 #a7e6cd。
+ */
+
+.md2html-article {
+  max-width: 700px;
+  margin: 0 auto;
+  color: #1f2328;
+  font-family: "PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.78;
+  font-size: 16px;
+}
+
+/* 标题:深墨绿基调 + 亮绿左强调条 —— 双层辨识度核心 */
+.md2html-article h1 {
+  margin: 32px 0 16px;
+  color: #0D3225;
+  font-weight: 700;
+  font-size: 26px;
+}
+
+.md2html-article h2 {
+  margin: 30px 0 16px;
+  padding: 2px 0 8px 14px;
+  color: #0D3225;
+  font-weight: 700;
+  font-size: 21px;
+  border-left: 4px solid #10B981;
+  border-bottom: 1px solid #e3ebe7;
+}
+
+.md2html-article h3 {
+  margin: 24px 0 12px;
+  padding-left: 12px;
+  color: #134e3a;
+  font-weight: 700;
+  font-size: 18px;
+  border-left: 3px solid #10B981;
+}
+
+.md2html-article h4,
+.md2html-article h5,
+.md2html-article h6 {
+  margin: 20px 0 10px;
+  color: #374151;
+  font-weight: 700;
+}
+
+.md2html-article p {
+  margin: 14px 0;
+}
+
+/* 加粗:带品牌深墨绿基调,强化双层层次 */
+.md2html-article strong {
+  color: #0D3225;
+}
+
+.md2html-article a {
+  color: #0a6b4a;
+  text-decoration: none;
+  border-bottom: 1px solid #a7e6cd;
+}
+
+.md2html-article img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 20px auto;
+  border-radius: 6px;
+}
+
+.md2html-article img.md2html-inline-image {
+  display: inline-block;
+  margin: 0 2px;
+  vertical-align: middle;
+  border-radius: 0;
+}
+
+/* 列表 */
+.md2html-article ul,
+.md2html-article ol {
+  margin: 14px 0;
+  padding-left: 24px;
+}
+
+.md2html-article li {
+  margin: 6px 0;
+}
+
+.md2html-article ul li::marker {
+  color: #10B981;
+}
+
+/* 引用块:亮绿调边 + 柔和绿底 */
+.md2html-article blockquote {
+  margin: 16px 0;
+  padding: 10px 16px;
+  border-left: 4px solid #10B981;
+  border-radius: 0 8px 8px 0;
+  background: #f2fbf7;
+  color: #4b5563;
+}
+
+.md2html-article blockquote p {
+  margin: 6px 0;
+}
+
+/* 行内代码:淡绿底 + 圆角 + 深绿字;box-decoration-break 保证换行时每段都有完整圆角内边距 */
+.md2html-article code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: 5px;
+  border: 1px solid #b3e6d1;
+  background: #e8f7f0;
+  color: #0a6b4a;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 代码块容器:顶栏(mac 圆点 + 语言标签) + 深色代码区,整体圆角与阴影 */
+.md2html-code-block {
+  margin: 20px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #2a3040;
+  box-shadow: 0 6px 20px rgba(20, 26, 46, 0.18);
+}
+
+.md2html-code-header {
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  background: #232838;
+  border-bottom: 1px solid #313747;
+  line-height: 1;
+}
+
+.md2html-code-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+
+.md2html-code-lang {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #8b93a7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 代码块:背景与配色由 Shiki 内联生成,容器已管圆角/边框,这里去掉自身圆角与外边距 */
+.md2html-code-block pre,
+.md2html-article pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  margin: 0;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 未被容器包裹的裸 pre(理论上不出现)仍保留独立圆角边框 */
+.md2html-article > pre {
+  margin: 18px 0;
+  border-radius: 10px;
+  border: 1px solid #2a3040;
+}
+
+.md2html-article pre code {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  -webkit-box-decoration-break: initial;
+  box-decoration-break: initial;
+}
+
+/* Callout:方向三淡底,中文标签内联首行,轻微阴影提升层次 */
+.md2html-callout {
+  margin: 16px 0;
+  padding: 11px 15px;
+  border-left: 3px solid #3b5bdb;
+  border-radius: 0 6px 6px 0;
+  background: #f7f9fe;
+  font-size: 15px;
+  box-shadow: 0 2px 8px rgba(20, 26, 46, 0.05);
+}
+
+.md2html-callout p {
+  margin: 4px 0;
+}
+
+.md2html-callout p:first-child {
+  margin-top: 0;
+}
+
+.md2html-callout p:last-child {
+  margin-bottom: 0;
+}
+
+.md2html-callout-label {
+  margin-right: 6px;
+  font-weight: 700;
+  color: #3b5bdb;
+}
+
+.md2html-callout-tip {
+  border-left-color: #10B981;
+  background: #f2fbf7;
+}
+
+.md2html-callout-tip .md2html-callout-label {
+  color: #0a6b4a;
+}
+
+.md2html-callout-warning {
+  border-left-color: #f08c00;
+  background: #fefbf4;
+}
+
+.md2html-callout-warning .md2html-callout-label {
+  color: #b26a00;
+}
+
+.md2html-callout-important {
+  border-left-color: #e03131;
+  background: #fef7f7;
+}
+
+.md2html-callout-important .md2html-callout-label {
+  color: #c92a2a;
+}
+
+/* Details 折叠块:原生 details(generic) */
+.md2html-article details {
+  margin: 18px 0;
+  padding: 0 16px;
+  border: 1px solid #d7e3dd;
+  border-left: 3px solid #10B981;
+  border-radius: 8px;
+  background: #fbfdfc;
+  box-shadow: 0 2px 8px rgba(13, 50, 37, 0.05);
+}
+
+.md2html-article details[open] {
+  padding-bottom: 4px;
+}
+
+.md2html-article summary {
+  padding: 12px 0;
+  font-weight: 700;
+  color: #0D3225;
+  cursor: pointer;
+  list-style: none;
+}
+
+.md2html-article summary::-webkit-details-marker {
+  display: none;
+}
+
+.md2html-article summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: #10B981;
+  transition: transform 0.15s ease;
+}
+
+.md2html-article details[open] summary::before {
+  content: "▾";
+}
+
+/* Details 降级块(wechat/km/乐乎):无法折叠,做成绿色标记的静态卡片 */
+.md2html-details-fallback {
+  margin: 18px 0;
+  padding: 0 16px 8px;
+  border: 1px solid #d7e3dd;
+  border-left: 3px solid #10B981;
+  border-radius: 8px;
+  background: #fbfdfc;
+  box-shadow: 0 2px 8px rgba(13, 50, 37, 0.05);
+}
+
+.md2html-details-summary {
+  padding: 12px 0;
+  margin-bottom: 4px;
+  font-weight: 700;
+  color: #0D3225;
+  border-bottom: 1px solid #e3ebe7;
+}
+
+/* 表格:表头淡青底 + 斑马纹,圆角与细阴影 */
+/* 通用表格选择器带 :not(.md2html-metrics),避免指标卡 td 被通用 border 污染(详见指标卡注释) */
+.md2html-article table:not(.md2html-metrics) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 18px 0;
+  font-size: 15px;
+  border: 1px solid #e5e8ec;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(20, 26, 46, 0.05);
+}
+
+.md2html-article table:not(.md2html-metrics) th,
+.md2html-article table:not(.md2html-metrics) td {
+  border-bottom: 1px solid #e5e8ec;
+  border-right: 1px solid #e5e8ec;
+  padding: 9px 13px;
+  text-align: left;
+}
+
+.md2html-article table:not(.md2html-metrics) tr td:last-child,
+.md2html-article table:not(.md2html-metrics) tr th:last-child {
+  border-right: none;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.md2html-article table:not(.md2html-metrics) thead th {
+  background: #e8f7f0;
+  color: #0a6b4a;
+  font-weight: 700;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:nth-child(even) {
+  background: #f7faf9;
+}
+
+/* 分割线 */
+.md2html-article hr {
+  border: none;
+  border-top: 1px solid #e5e8ec;
+  margin: 28px 0;
+}
+
+/* 目录 */
+.md2html-toc {
+  margin: 20px 0;
+  padding: 14px 18px;
+  background: #f2fbf7;
+  border: 1px solid #a7e6cd;
+  border-radius: 8px;
+}
+
+.md2html-toc-title {
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: #0a6b4a;
+}
+
+.md2html-toc ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.md2html-toc li {
+  margin: 4px 0;
+}
+
+.md2html-toc a {
+  color: #4b5563;
+  text-decoration: none;
+}
+
+.md2html-toc-level-3 {
+  margin-left: 12px;
+}
+
+/* 数据指标卡:深墨绿顶条 + 亮绿大数字,去掉分隔线/背景/阴影,留白更通透
+ * 用 table 布局保证公众号等不支持 flex 的环境也能横向排列。
+ * 选择器带 .md2html-article 前缀以压过通用 table/td 样式的特异性。 */
+.md2html-article table.md2html-metrics {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 36px 0;
+  font-size: 15px;
+  border: 1px solid #d9e7e0;
+  border-top: 3px solid #0D3225;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.md2html-article table.md2html-metrics tbody tr {
+  background: transparent;
+}
+
+.md2html-article td.md2html-metric {
+  text-align: center;
+  padding: 36px 12px;
+  border-right: none;
+  border-bottom: none;
+  background: transparent;
+}
+
+.md2html-metric-num {
+  font-size: 24px;
+  font-weight: 800;
+  color: #10B981;
+  line-height: 1.2;
+}
+
+.md2html-metric-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7c74;
+  margin-top: 5px;
+}

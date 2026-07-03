@@ -1,4 +1,5 @@
 import { createIcons, icons } from "lucide";
+import { highlightMarkdown } from "./markdown-highlight.js";
 import "./styles.css";
 
 type PlatformId = "generic" | "wechat" | "km" | "lexiang";
@@ -34,6 +35,7 @@ interface ConvertResponse {
   jobId: string;
   previewUrl: string;
   imageBaseUrl: string;
+  html: string;
   inlineHtml: string;
   assets: ArticleAssets;
   imageManifest: ImageManifestItem[];
@@ -54,6 +56,7 @@ const state: {
   uiTheme: "light" | "dark";
   viewport: "article" | "phone";
   sourceCollapsed: boolean;
+  outputCollapsed: boolean;
   files: EncodedFile[];
   assets: ArticleAssets | null;
   result: ConvertResponse | null;
@@ -62,11 +65,12 @@ const state: {
   inputFilePath: "article.md",
   articleName: "article",
   platform: "generic",
-  theme: "jugg-clean",
+  theme: "jugg-clean-v2",
   toc: false,
   uiTheme: readUiTheme(),
   viewport: "article",
   sourceCollapsed: readSourceCollapsed(),
+  outputCollapsed: readOutputCollapsed(),
   files: [],
   assets: null,
   result: null
@@ -75,6 +79,26 @@ const state: {
 let convertTimer: number | undefined;
 let convertSerial = 0;
 let sourceDragDepth = 0;
+let highlightRaf = 0;
+let saveTimer: number | undefined;
+let markdownDirty = false;
+let assetsDirty = false;
+let activeFileHandle: FileSystemFileHandle | null = null;
+let activeDirHandle: FileSystemDirectoryHandle | null = null;
+const fsAccessSupported = typeof window.showOpenFilePicker === "function"
+  && typeof window.showDirectoryPicker === "function";
+
+const MIN_SOURCE_WIDTH = 280;
+const MIN_PREVIEW_WIDTH = 360;
+const MIN_OUTPUT_WIDTH = 280;
+const RESIZER_WIDTH = 8;
+
+let activeResize: {
+  target: "source" | "output";
+  startX: number;
+  startWidth: number;
+  otherWidth: number;
+} | null = null;
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <main class="app-shell">
@@ -113,6 +137,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
           <div>
             <h2>Markdown</h2>
             <p id="fileCount">未选择文件</p>
+            <p id="saveStatus" class="save-status"></p>
           </div>
           <div class="panel-actions">
             <button class="tool-button" id="openMarkdown" type="button"><i data-lucide="file-text"></i><span>文件</span></button>
@@ -125,11 +150,16 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         </div>
         <div class="source-content">
           <select id="articleFileSelect" class="article-select" aria-label="Markdown 文件"></select>
-          <textarea id="markdownInput" spellcheck="false" placeholder="# 标题"></textarea>
+          <div class="markdown-editor">
+            <pre id="markdownHighlight" class="markdown-highlight" aria-hidden="true"></pre>
+            <textarea id="markdownInput" spellcheck="false" placeholder="# 标题"></textarea>
+          </div>
           <input id="markdownFileInput" type="file" hidden />
           <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
         </div>
       </section>
+
+      <div class="resizer" data-resize="source" aria-hidden="true"></div>
 
       <section class="preview-pane panel">
         <div class="panel-head">
@@ -147,16 +177,24 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         </div>
       </section>
 
-      <aside class="assets-pane panel">
+      <div class="resizer" data-resize="output" aria-hidden="true"></div>
+
+      <aside class="assets-pane panel" id="assetsPane">
         <div class="panel-head">
           <div>
             <h2>输出</h2>
             <p id="assetSummary">无图片</p>
           </div>
+          <div class="panel-actions">
+            <button class="icon-button" id="toggleOutputPane" type="button" title="收起输出区" aria-label="收起输出区">
+              <i data-lucide="panel-right-close"></i>
+            </button>
+          </div>
         </div>
         <div class="copy-grid">
           <button class="primary-action" id="copyRich" type="button"><i data-lucide="clipboard-copy"></i><span>复制富文本</span></button>
           <button class="tool-button wide" id="copyInline" type="button"><i data-lucide="code-xml"></i><span>复制 inline HTML</span></button>
+          <button class="tool-button wide" id="exportHtml" type="button"><i data-lucide="folder-down"></i><span>导出 HTML 到 Downloads</span></button>
           <button class="tool-button wide" id="exportAssets" type="button"><i data-lucide="download"></i><span>导出 article.assets.json</span></button>
         </div>
         <div class="image-list" id="imageList"></div>
@@ -170,20 +208,25 @@ createIcons({ icons });
 document.documentElement.dataset.theme = state.uiTheme;
 
 const markdownInput = getElement<HTMLTextAreaElement>("markdownInput");
+const markdownHighlight = getElement<HTMLElement>("markdownHighlight");
 const markdownFileInput = getElement<HTMLInputElement>("markdownFileInput");
 const folderInput = getElement<HTMLInputElement>("folderInput");
 const articleFileSelect = getElement<HTMLSelectElement>("articleFileSelect");
 const sourcePane = getElement("sourcePane");
+const assetsPane = getElement("assetsPane");
 const workspace = document.querySelector<HTMLElement>(".workspace")!;
 
-getElement("openMarkdown").addEventListener("click", () => markdownFileInput.click());
-getElement("openFolder").addEventListener("click", () => folderInput.click());
+getElement("openMarkdown").addEventListener("click", () => void pickFile());
+getElement("openFolder").addEventListener("click", () => void pickFolder());
 getElement("loadExample").addEventListener("click", loadExample);
 getElement("copyInline").addEventListener("click", copyInlineHtml);
 getElement("copyRich").addEventListener("click", copyRichText);
 getElement("exportAssets").addEventListener("click", exportAssets);
+getElement("exportHtml").addEventListener("click", () => void exportHtml());
 getElement("uiThemeButton").addEventListener("click", toggleUiTheme);
 getElement("toggleSourcePane").addEventListener("click", toggleSourcePane);
+getElement("toggleOutputPane").addEventListener("click", toggleOutputPane);
+getElement("saveStatus").addEventListener("click", () => void authorizeSave());
 sourcePane.addEventListener("dragenter", handleSourceDragEnter);
 sourcePane.addEventListener("dragover", handleSourceDragOver);
 sourcePane.addEventListener("dragleave", handleSourceDragLeave);
@@ -191,8 +234,15 @@ sourcePane.addEventListener("drop", handleSourceDrop);
 
 markdownInput.addEventListener("input", () => {
   state.markdown = markdownInput.value;
+  markdownDirty = true;
+  scheduleHighlight();
   scheduleConvert();
+  scheduleSave();
 });
+
+markdownInput.addEventListener("scroll", () => {
+  syncHighlightScroll();
+}, { passive: true });
 
 markdownFileInput.addEventListener("change", async () => {
   const file = markdownFileInput.files?.[0];
@@ -206,6 +256,7 @@ markdownFileInput.addEventListener("change", async () => {
     return;
   }
 
+  clearSaveHandles();
   await importFiles([await encodeFile(file, file.name)], file.name);
   markdownFileInput.value = "";
 });
@@ -216,19 +267,23 @@ folderInput.addEventListener("change", async () => {
     return;
   }
 
+  clearSaveHandles();
   await importFiles(await Promise.all(files.map((file) => encodeFile(file, filePath(file)))));
   folderInput.value = "";
 });
 
-articleFileSelect.addEventListener("change", () => {
+articleFileSelect.addEventListener("change", async () => {
   selectArticleFile(articleFileSelect.value);
   state.assets = null;
+  assetsDirty = false;
   renderMeta();
+  await updateActiveFileHandle();
   scheduleConvert(0);
 });
 
 getElement("themeSelect").addEventListener("change", (event) => {
   state.theme = (event.target as HTMLSelectElement).value;
+  localStorage.setItem("md2html-theme", state.theme);
   scheduleConvert(0);
 });
 
@@ -259,6 +314,8 @@ getElement("viewportGroup").addEventListener("click", (event) => {
 });
 
 renderSourcePane();
+renderOutputPane();
+initResizers();
 void initialize();
 
 async function initialize(): Promise<void> {
@@ -269,6 +326,282 @@ async function initialize(): Promise<void> {
 function scheduleConvert(delay = 300): void {
   window.clearTimeout(convertTimer);
   convertTimer = window.setTimeout(convertNow, delay);
+}
+
+/** 打开单个 Markdown 文件,保留句柄用于自动保存(单文件模式下无法读取同级图片)。 */
+async function pickFile(): Promise<void> {
+  if (!window.showOpenFilePicker) {
+    markdownFileInput.click();
+    return;
+  }
+
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: "Markdown", accept: { "text/markdown": [".md", ".markdown"] } }]
+    });
+    const file = await handle.getFile();
+    if (!isMarkdownPath(file.name)) {
+      showStatus("请选择 Markdown 文件（.md 或 .markdown）", true);
+      return;
+    }
+
+    activeFileHandle = handle;
+    activeDirHandle = null;
+    await ensureWritePermission(handle);
+    await importFiles([await encodeFile(file, file.name)], file.name);
+    renderSaveStatus();
+  } catch (error) {
+    if (!isAbortError(error)) {
+      showStatus(error instanceof Error ? error.message : String(error), true);
+    }
+  }
+}
+
+/** 打开目录,加载其中所有文件(含同级图片),并保留目录句柄用于自动保存。 */
+async function pickFolder(): Promise<void> {
+  if (!window.showDirectoryPicker) {
+    folderInput.click();
+    return;
+  }
+
+  try {
+    const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    activeDirHandle = dirHandle;
+    activeFileHandle = null;
+    await ensureWritePermission(dirHandle);
+    await importFiles(await readDirectoryHandles(dirHandle));
+    await updateActiveFileHandle();
+    renderSaveStatus();
+  } catch (error) {
+    if (!isAbortError(error)) {
+      showStatus(error instanceof Error ? error.message : String(error), true);
+    }
+  }
+}
+
+/** 递归读取目录下所有文件为已编码文件列表(路径相对该目录,便于相对路径解析)。 */
+async function readDirectoryHandles(
+  dirHandle: FileSystemDirectoryHandle,
+  prefix = ""
+): Promise<EncodedFile[]> {
+  const result: EncodedFile[] = [];
+  for await (const entry of dirHandle.values()) {
+    if (entry.name === ".DS_Store") {
+      continue;
+    }
+    const relPath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.kind === "file") {
+      const file = await (entry as FileSystemFileHandle).getFile();
+      result.push(await encodeFile(file, relPath));
+    } else if (entry.kind === "directory") {
+      result.push(...await readDirectoryHandles(entry as FileSystemDirectoryHandle, relPath));
+    }
+  }
+  return result;
+}
+
+/** 根据当前选中 Markdown 的相对路径,在已打开目录中解析其可写句柄。 */
+async function updateActiveFileHandle(): Promise<void> {
+  if (!activeDirHandle) {
+    return;
+  }
+
+  try {
+    // 目录已具备读写权限时,其内文件句柄可直接写入,无需再单独请求权限
+    // (读取全部文件后再 requestPermission 会脱离用户激活上下文而失败)
+    activeFileHandle = await resolveFileHandle(activeDirHandle, state.inputFilePath);
+  } catch {
+    activeFileHandle = null;
+  }
+  renderSaveStatus();
+}
+
+async function resolveFileHandle(
+  dirHandle: FileSystemDirectoryHandle,
+  relativePath: string
+): Promise<FileSystemFileHandle> {
+  const segments = relativePath.split("/").filter(Boolean);
+  let dir = dirHandle;
+  for (let i = 0; i < segments.length - 1; i += 1) {
+    dir = await dir.getDirectoryHandle(segments[i]);
+  }
+  return dir.getFileHandle(segments[segments.length - 1]);
+}
+
+/** 请求读写权限;失败时返回 false,保存功能将不可用但不阻塞打开。 */
+async function ensureWritePermission(handle: FileSystemHandle): Promise<boolean> {
+  if (typeof handle.requestPermission !== "function") {
+    return true;
+  }
+  const opts = { mode: "readwrite" as const };
+  try {
+    if ((await handle.queryPermission?.(opts)) === "granted") {
+      return true;
+    }
+    // requestPermission 需用户激活上下文;拖拽等非激活场景会抛 SecurityError,这里降级为 false,
+    // 由 saveStatus 的「点击授权」按钮在 click 激活下重新请求。
+    const result = await handle.requestPermission(opts);
+    return result === "granted";
+  } catch {
+    return false;
+  }
+}
+
+/** 查询句柄是否已具备写权限(不弹框)。 */
+async function hasWritePermission(handle: FileSystemHandle): Promise<boolean> {
+  if (typeof handle.queryPermission !== "function") {
+    return true;
+  }
+  return (await handle.queryPermission({ mode: "readwrite" })) === "granted";
+}
+
+function clearSaveHandles(): void {
+  activeFileHandle = null;
+  activeDirHandle = null;
+  markdownDirty = false;
+  assetsDirty = false;
+  window.clearTimeout(saveTimer);
+  renderSaveStatus();
+}
+
+/** 正文或图片宽度改动后,5 秒无后续改动则自动写回已打开的文件。 */
+function scheduleSave(): void {
+  if (!activeFileHandle && !activeDirHandle) {
+    return;
+  }
+  if (!markdownDirty && !assetsDirty) {
+    return;
+  }
+  setSaveStatus("未保存…", "idle");
+  window.clearTimeout(saveTimer);
+  saveTimer = window.setTimeout(() => void saveNow(), 5000);
+}
+
+async function saveNow(): Promise<void> {
+  const fileHandle = markdownDirty ? activeFileHandle : null;
+  const dirHandle = assetsDirty ? activeDirHandle : null;
+  const assetsToSave = state.assets;
+  if (!fileHandle && !(dirHandle && assetsToSave)) {
+    return;
+  }
+
+  // 定时器回调无用户激活,createWritable 会因请求权限抛 SecurityError;先校验权限,不足则提示授权。
+  const permissionHandle = fileHandle ?? dirHandle;
+  if (permissionHandle && !(await hasWritePermission(permissionHandle))) {
+    setSaveStatus("点击授权自动保存", "needs-permission");
+    return;
+  }
+
+  try {
+    if (fileHandle) {
+      const writable = await fileHandle.createWritable();
+      await writable.write(state.markdown);
+      await writable.close();
+      markdownDirty = false;
+    }
+    if (dirHandle && assetsToSave) {
+      await writeAssetsFile(dirHandle, assetsToSave);
+      assetsDirty = false;
+    }
+    setSaveStatus("已保存", "saved");
+  } catch (error) {
+    setSaveStatus("保存失败", "error");
+    console.error("Auto save failed:", error);
+  }
+}
+
+/** 计算与输入 markdown 同级、同名的 assets 配置文件相对路径(如 sub/article.md → sub/article.assets.json)。 */
+function assetsRelativePath(): string {
+  const inputPath = state.inputFilePath.replace(/\\/g, "/");
+  const slash = inputPath.lastIndexOf("/");
+  const dot = inputPath.lastIndexOf(".");
+  const base = dot > slash ? inputPath.slice(0, dot) : inputPath;
+  return `${base}.assets.json`;
+}
+
+/** 在已打开目录中解析(必要时创建)assets 配置文件的可写句柄。 */
+async function resolveAssetsFileHandle(
+  dirHandle: FileSystemDirectoryHandle
+): Promise<FileSystemFileHandle> {
+  const segments = assetsRelativePath().split("/").filter(Boolean);
+  let dir = dirHandle;
+  for (let i = 0; i < segments.length - 1; i += 1) {
+    dir = await dir.getDirectoryHandle(segments[i]);
+  }
+  return dir.getFileHandle(segments[segments.length - 1], { create: true });
+}
+
+/** 把当前 assets 配置写回源目录的 article.assets.json,供下次打开时复用。 */
+async function writeAssetsFile(
+  dirHandle: FileSystemDirectoryHandle,
+  assets: ArticleAssets
+): Promise<void> {
+  const handle = await resolveAssetsFileHandle(dirHandle);
+  const writable = await handle.createWritable();
+  await writable.write(JSON.stringify(assets, null, 2));
+  await writable.close();
+}
+
+async function renderSaveStatus(): Promise<void> {
+  if (!activeFileHandle) {
+    if (!fsAccessSupported) {
+      setSaveStatus("当前浏览器不支持自动保存,请用 Chrome/Edge", "idle");
+    } else {
+      setSaveStatus("", "idle");
+    }
+    return;
+  }
+  if (await hasWritePermission(activeFileHandle)) {
+    setSaveStatus("就绪", "idle");
+  } else {
+    setSaveStatus("点击授权自动保存", "needs-permission");
+  }
+}
+
+function setSaveStatus(text: string, kind: "idle" | "saving" | "saved" | "error" | "needs-permission"): void {
+  const el = getElement("saveStatus");
+  el.textContent = text;
+  el.className = `save-status is-${kind}`;
+}
+
+/** 点击状态条授权:在 click 激活下请求写权限,成功后立即保存当前待写内容。 */
+async function authorizeSave(): Promise<void> {
+  if (!getElement("saveStatus").classList.contains("is-needs-permission")) {
+    return;
+  }
+  const handle = activeFileHandle ?? activeDirHandle;
+  if (!handle) {
+    return;
+  }
+  if (await ensureWritePermission(handle)) {
+    await saveNow();
+  }
+}
+
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
+/** 用 rAF 合并连续输入,避免每次按键都重建高亮叠加层。 */
+function scheduleHighlight(): void {
+  if (highlightRaf) {
+    return;
+  }
+  highlightRaf = window.requestAnimationFrame(() => {
+    highlightRaf = 0;
+    renderHighlight();
+  });
+}
+
+/** 重建高亮叠加层内容并同步滚动位置。 */
+function renderHighlight(): void {
+  markdownHighlight.innerHTML = highlightMarkdown(markdownInput.value);
+  syncHighlightScroll();
+}
+
+function syncHighlightScroll(): void {
+  markdownHighlight.scrollTop = markdownInput.scrollTop;
+  markdownHighlight.scrollLeft = markdownInput.scrollLeft;
 }
 
 async function convertNow(): Promise<void> {
@@ -318,9 +651,11 @@ async function convertNow(): Promise<void> {
 async function loadThemes(): Promise<void> {
   const response = await fetch("/api/themes");
   const { themes } = await response.json() as { themes: string[] };
+  const ordered = orderThemes(themes);
   const themeSelect = getElement<HTMLSelectElement>("themeSelect");
-  themeSelect.innerHTML = themes.map((theme) => `<option value="${escapeAttr(theme)}">${escapeHtml(theme)}</option>`).join("");
-  state.theme = themes.includes("jugg-clean") ? "jugg-clean" : (themes[0] ?? "jugg-clean");
+  themeSelect.innerHTML = ordered.map((theme) => `<option value="${escapeAttr(theme)}">${escapeHtml(theme)}</option>`).join("");
+  const persisted = readTheme();
+  state.theme = ordered.includes(persisted) ? persisted : (ordered[0] ?? "jugg-clean-v2");
   themeSelect.value = state.theme;
 }
 
@@ -337,9 +672,11 @@ async function loadExample(): Promise<void> {
   state.markdown = example.markdown;
   state.files = example.files;
   state.assets = null;
+  clearSaveHandles();
   markdownInput.value = state.markdown;
   renderArticleSelect();
   renderMeta();
+  renderHighlight();
   scheduleConvert(0);
 }
 
@@ -349,12 +686,67 @@ function renderResult(): void {
     return;
   }
 
-  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
-  previewFrame.src = `${result.previewUrl}?t=${Date.now()}`;
+  renderPreview(result);
   renderPreviewShell();
   renderMeta();
   renderImages();
   renderWarnings();
+}
+
+let previewThemeKey = "";
+
+/**
+ * 渲染预览 iframe。首次或跨主题时整文档写入一次;之后只增量替换 <article> 与 <style>,
+ * 避免每次输入都整页重载导致的白屏闪烁。
+ */
+function renderPreview(result: ConvertResponse): void {
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  const doc = previewFrame.contentDocument;
+  const themeKey = state.theme;
+  // srcdoc 文档基址为 about:srcdoc,需注入 <base> 让 res/xxx.png 解析到服务端输出目录
+  const baseHref = new URL(result.imageBaseUrl, window.location.origin).href;
+
+  if (!doc || !doc.body || previewThemeKey !== themeKey) {
+    previewFrame.srcdoc = injectBaseHref(result.html, baseHref);
+    previewThemeKey = themeKey;
+    return;
+  }
+
+  ensureBaseHref(doc, baseHref);
+  const parsed = new DOMParser().parseFromString(result.html, "text/html");
+  const styleText = parsed.querySelector("style")?.textContent ?? "";
+  const styleEl = doc.querySelector("style");
+  if (styleEl && styleEl.textContent !== styleText) {
+    styleEl.textContent = styleText;
+  }
+
+  const newArticle = parsed.querySelector(".md2html-article");
+  const oldArticle = doc.querySelector(".md2html-article");
+  if (newArticle && oldArticle) {
+    oldArticle.replaceWith(doc.importNode(newArticle, true));
+  } else {
+    doc.body.innerHTML = parsed.body.innerHTML;
+  }
+}
+
+/** 在预览 HTML 的 <head> 注入 <base>,使相对图片路径解析到服务端输出目录。 */
+function injectBaseHref(html: string, baseHref: string): string {
+  const baseTag = `<base href="${escapeAttr(baseHref)}">`;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (match) => match + baseTag);
+  }
+  return baseTag + html;
+}
+
+function ensureBaseHref(doc: Document, baseHref: string): void {
+  let base = doc.querySelector("base");
+  if (!base) {
+    base = doc.createElement("base");
+    doc.head?.prepend(base);
+  }
+  if (base.getAttribute("href") !== baseHref) {
+    base.setAttribute("href", baseHref);
+  }
 }
 
 function renderImages(): void {
@@ -417,7 +809,9 @@ function renderImages(): void {
       };
       range.value = String(width);
       number.value = String(width);
+      assetsDirty = true;
       scheduleConvert();
+      scheduleSave();
     };
 
     range.addEventListener("input", () => updateWidth(range.value));
@@ -428,13 +822,19 @@ function renderImages(): void {
 function renderWarnings(): void {
   const warnings = state.result?.report.warnings ?? [];
   const target = getElement("warnings");
-  if (warnings.length === 0) {
+  const missing = state.result?.report.imagesMissing ?? 0;
+  const hint = missing > 0 && activeFileHandle && !activeDirHandle
+    ? `<p class="hint">本地图片未加载:改用「目录」打开所在文件夹即可显示图片。</p>`
+    : "";
+
+  if (warnings.length === 0 && !hint) {
     target.innerHTML = "";
     return;
   }
 
   target.innerHTML = `
-    <h3>警告</h3>
+    ${hint}
+    ${warnings.length ? `<h3>警告</h3>` : ""}
     ${warnings.map((warning) => `<p>${escapeHtml(warning.message)}</p>`).join("")}
   `;
 }
@@ -478,6 +878,18 @@ function renderSourcePane(): void {
   createIcons({ icons });
 }
 
+function renderOutputPane(): void {
+  assetsPane.classList.toggle("is-collapsed", state.outputCollapsed);
+  workspace.classList.toggle("output-collapsed", state.outputCollapsed);
+
+  const toggleButton = getElement<HTMLButtonElement>("toggleOutputPane");
+  const label = state.outputCollapsed ? "展开输出区" : "收起输出区";
+  toggleButton.title = label;
+  toggleButton.setAttribute("aria-label", label);
+  toggleButton.innerHTML = `<i data-lucide="${state.outputCollapsed ? "panel-right-open" : "panel-right-close"}"></i>`;
+  createIcons({ icons });
+}
+
 function showStatus(message: string, isError = false): void {
   const status = getElement("convertStatus");
   status.textContent = message;
@@ -494,6 +906,7 @@ function selectArticleFile(pathValue: string): void {
   state.articleName = file.path.split("/").pop()?.replace(/\.[^.]+$/, "") || "article";
   state.markdown = decodeBase64(file.contentBase64);
   markdownInput.value = state.markdown;
+  renderHighlight();
 }
 
 async function copyInlineHtml(): Promise<void> {
@@ -536,6 +949,48 @@ function exportAssets(): void {
   downloadBlob("article.assets.json", JSON.stringify(assets, null, 2), "application/json");
 }
 
+/** 调用服务端把当前转换结果(index.html + res 资源)导出到 ~/Downloads 下一个文件夹。 */
+async function exportHtml(): Promise<void> {
+  const result = state.result;
+  if (!result) {
+    showStatus("请先转换后再导出", true);
+    return;
+  }
+
+  showStatus("导出中…");
+  try {
+    const response = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jobId: result.jobId, articleName: state.articleName })
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.error ?? `HTTP ${response.status}`);
+    }
+
+    const { path: exportPath } = await response.json() as { path: string };
+    showStatus(`已导出到 ${exportPath}`);
+    void revealInFinder(exportPath);
+  } catch (error) {
+    showStatus(error instanceof Error ? error.message : String(error), true);
+  }
+}
+
+/** 调用服务端在 Finder 中打开导出目录。 */
+async function revealInFinder(target: string): Promise<void> {
+  try {
+    await fetch("/api/reveal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: target })
+    });
+  } catch {
+    // 打开 Finder 失败不影响导出结果，静默忽略
+  }
+}
+
 function mergeAssets(nextAssets: ArticleAssets, previousAssets: ArticleAssets | null): ArticleAssets {
   if (!previousAssets) {
     return structuredClone(nextAssets);
@@ -562,6 +1017,14 @@ function toggleSourcePane(): void {
   state.sourceCollapsed = !state.sourceCollapsed;
   localStorage.setItem("md2html-source-collapsed", String(state.sourceCollapsed));
   renderSourcePane();
+  applyPaneWidths();
+}
+
+function toggleOutputPane(): void {
+  state.outputCollapsed = !state.outputCollapsed;
+  localStorage.setItem("md2html-output-collapsed", String(state.outputCollapsed));
+  renderOutputPane();
+  applyPaneWidths();
 }
 
 async function handleSourceDrop(event: DragEvent): Promise<void> {
@@ -569,13 +1032,52 @@ async function handleSourceDrop(event: DragEvent): Promise<void> {
   sourceDragDepth = 0;
   setSourceDragging(false);
 
-  const files = await readDroppedFiles(event.dataTransfer);
-  if (files.length === 0) {
-    showStatus("未找到可导入文件", true);
+  // getAsFileSystemHandle 必须在 drop 事件同步阶段调用,先收集全部 promise 再 await,
+  // 拿到可写句柄后才能自动保存;否则回退到仅读取内容(无句柄,无法自动保存)。
+  const handles = (await Promise.all(readDropHandlePromises(event.dataTransfer)))
+    .filter((handle): handle is FileSystemHandle => Boolean(handle));
+
+  if (handles.length === 0) {
+    const files = await readDroppedFiles(event.dataTransfer);
+    if (files.length === 0) {
+      showStatus("未找到可导入文件", true);
+      return;
+    }
+    clearSaveHandles();
+    await importFiles(files);
     return;
   }
 
-  await importFiles(files);
+  clearSaveHandles();
+  const dirHandle = handles.find((handle): handle is FileSystemDirectoryHandle => handle.kind === "directory");
+  if (dirHandle) {
+    activeDirHandle = dirHandle;
+    activeFileHandle = null;
+    await ensureWritePermission(dirHandle);
+    await importFiles(await readDirectoryHandles(dirHandle));
+    await updateActiveFileHandle();
+  } else {
+    const fileHandle = handles.find((handle): handle is FileSystemFileHandle => handle.kind === "file");
+    if (!fileHandle) {
+      return;
+    }
+    activeFileHandle = fileHandle;
+    activeDirHandle = null;
+    await ensureWritePermission(fileHandle);
+    const file = await fileHandle.getFile();
+    await importFiles([await encodeFile(file, file.name)], file.name);
+  }
+  renderSaveStatus();
+}
+
+/** 同步收集拖拽项的文件系统句柄 promise(必须在事件处理同步阶段调用,否则 DataTransfer 失效)。 */
+function readDropHandlePromises(dataTransfer: DataTransfer | null): Promise<FileSystemHandle | null>[] {
+  if (!dataTransfer) {
+    return [];
+  }
+  return [...dataTransfer.items]
+    .map((item) => item.getAsFileSystemHandle?.())
+    .filter((promise): promise is Promise<FileSystemHandle | null> => Boolean(promise));
 }
 
 function handleSourceDragEnter(event: DragEvent): void {
@@ -617,9 +1119,15 @@ function setSourceDragging(isDragging: boolean): void {
 async function importFiles(files: EncodedFile[], preferredPath?: string): Promise<void> {
   state.files = files;
   const markdownFiles = state.files.filter((file) => isMarkdownPath(file.path));
+  // 选 article.md;否则取路径层数最浅(顶层)的 md,避免误选子目录(如 old/)中的文档
+  const shallowest = markdownFiles
+    .slice()
+    .sort((a, b) => a.path.split("/").length - b.path.split("/").length)[0];
   const selected = preferredPath
     ? markdownFiles.find((file) => file.path === preferredPath)
-    : markdownFiles.find((file) => file.path.endsWith("/article.md")) ?? markdownFiles[0];
+    : markdownFiles.find((file) => file.path.endsWith("/article.md"))
+      ?? shallowest
+      ?? markdownFiles[0];
   if (!selected) {
     showStatus("目录中没有 Markdown", true);
     return;
@@ -760,6 +1268,149 @@ function readUiTheme(): "light" | "dark" {
 
 function readSourceCollapsed(): boolean {
   return localStorage.getItem("md2html-source-collapsed") === "true";
+}
+
+function readOutputCollapsed(): boolean {
+  return localStorage.getItem("md2html-output-collapsed") === "true";
+}
+
+function readTheme(): string {
+  return localStorage.getItem("md2html-theme") ?? "";
+}
+
+/** 主题排序:v2 优先,其次 v1,其余按名称升序,保证下拉顺序稳定。 */
+function orderThemes(themes: string[]): string[] {
+  const preferred = ["jugg-clean-v2", "jugg-clean-v1"];
+  const ranked = preferred.filter((name) => themes.includes(name));
+  const rest = themes
+    .filter((name) => !preferred.includes(name))
+    .sort((a, b) => a.localeCompare(b));
+  return [...ranked, ...rest];
+}
+
+/** 初始化三栏宽度调节器,并恢复上次保存的宽度。 */
+function initResizers(): void {
+  document.querySelectorAll<HTMLElement>(".resizer").forEach((resizer) => {
+    resizer.addEventListener("mousedown", startResize);
+  });
+  applyPaneWidths();
+  window.addEventListener("resize", () => applyPaneWidths());
+}
+
+function applyPaneWidths(): void {
+  const available = workspace.clientWidth - RESIZER_WIDTH * 2;
+  if (available <= 0) {
+    return;
+  }
+
+  // 有任一面板收起时清除像素宽度,让 CSS grid 的 fr 默认值均分剩余空间
+  if (state.sourceCollapsed || state.outputCollapsed) {
+    workspace.style.removeProperty("--col-source");
+    workspace.style.removeProperty("--col-output");
+    return;
+  }
+
+  const stored = readPaneWidths();
+  let source = stored?.source ?? defaultSourceWidth(available);
+  let output = stored?.output ?? defaultOutputWidth(available);
+
+  source = clamp(source, MIN_SOURCE_WIDTH, available - MIN_PREVIEW_WIDTH - output);
+  output = clamp(output, MIN_OUTPUT_WIDTH, available - MIN_PREVIEW_WIDTH - source);
+
+  workspace.style.setProperty("--col-source", `${source}px`);
+  workspace.style.setProperty("--col-output", `${output}px`);
+}
+
+function startResize(event: MouseEvent): void {
+  const resizer = event.currentTarget as HTMLElement;
+  const target = resizer.dataset.resize as "source" | "output";
+  if (!target) {
+    return;
+  }
+
+  const sourceWidth = paneRenderedWidth(sourcePane);
+  const outputWidth = paneRenderedWidth(assetsPane);
+  activeResize = {
+    target,
+    startX: event.clientX,
+    startWidth: target === "source" ? sourceWidth : outputWidth,
+    otherWidth: target === "source" ? outputWidth : sourceWidth
+  };
+
+  resizer.classList.add("is-dragging");
+  document.body.classList.add("is-resizing");
+  window.addEventListener("mousemove", onResizeMove);
+  window.addEventListener("mouseup", endResize);
+  event.preventDefault();
+}
+
+function onResizeMove(event: MouseEvent): void {
+  if (!activeResize) {
+    return;
+  }
+  const delta = event.clientX - activeResize.startX;
+  const available = workspace.clientWidth - RESIZER_WIDTH * 2;
+  const maxWidth = available - MIN_PREVIEW_WIDTH - activeResize.otherWidth;
+  const min = activeResize.target === "source" ? MIN_SOURCE_WIDTH : MIN_OUTPUT_WIDTH;
+  // 源栏在最左,分隔条位置随源栏宽变化,取 +delta;
+  // 输出栏在最右,分隔条位置 = 总宽 - 输出宽,故取 -delta 才能跟随鼠标。
+  const sign = activeResize.target === "source" ? 1 : -1;
+  const width = clamp(activeResize.startWidth + sign * delta, min, maxWidth);
+  workspace.style.setProperty(
+    activeResize.target === "source" ? "--col-source" : "--col-output",
+    `${width}px`
+  );
+}
+
+function endResize(): void {
+  if (!activeResize) {
+    return;
+  }
+  activeResize = null;
+  document.querySelectorAll(".resizer.is-dragging").forEach((el) => el.classList.remove("is-dragging"));
+  document.body.classList.remove("is-resizing");
+  window.removeEventListener("mousemove", onResizeMove);
+  window.removeEventListener("mouseup", endResize);
+  persistPaneWidths();
+}
+
+function persistPaneWidths(): void {
+  localStorage.setItem(
+    "md2html-pane-widths",
+    JSON.stringify({ source: paneRenderedWidth(sourcePane), output: paneRenderedWidth(assetsPane) })
+  );
+}
+
+function paneRenderedWidth(element: HTMLElement): number {
+  return Math.round(element.getBoundingClientRect().width);
+}
+
+function defaultSourceWidth(available: number): number {
+  return Math.round((available * 0.92) / 3.13);
+}
+
+function defaultOutputWidth(available: number): number {
+  return Math.round((available * 0.86) / 3.13);
+}
+
+function readPaneWidths(): { source: number; output: number } | null {
+  try {
+    const raw = localStorage.getItem("md2html-pane-widths");
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as { source?: unknown; output?: unknown };
+    if (typeof parsed.source !== "number" || typeof parsed.output !== "number") {
+      return null;
+    }
+    return { source: parsed.source, output: parsed.output };
+  } catch {
+    return null;
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }
 
 function getElement<T extends HTMLElement = HTMLElement>(id: string): T {

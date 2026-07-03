@@ -5,6 +5,7 @@ import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
 import remarkRehype from "remark-rehype";
 import rehypeRaw from "rehype-raw";
+import rehypeShiki from "@shikijs/rehype";
 import rehypeStringify from "rehype-stringify";
 import type {
   ArticleAssets,
@@ -18,6 +19,7 @@ import type {
 import { loadArticleAssets, resolveAssetsConfigPath } from "./assets/assets-config.js";
 import { createImageManifest, type ImageRef } from "./assets/image-manifest.js";
 import { rehypeDetails } from "./markdown/rehype-details.js";
+import { createCodeBlockChromeTransformer } from "./markdown/rehype-code-block-chrome.js";
 import {
   rehypeApplyImageManifest,
   rehypeNormalizeImages
@@ -45,7 +47,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     warnings: collectionWarnings,
     supportsDetails: true,
     toc: false,
-    imageManifest: undefined
+    imageManifest: undefined,
+    highlight: false
   });
 
   const imageManifest = await createImageManifest({
@@ -67,7 +70,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     warnings,
     supportsDetails: adapter.capabilities.supportsDetails,
     toc: Boolean(options.toc),
-    imageManifest
+    imageManifest,
+    highlight: true
   });
   const adaptedBodyHtml = adapter.adaptHtml(bodyHtml, warnings);
   if (options.strict && warnings.some((warning) => warning.code === "unsupported-html")) {
@@ -135,6 +139,7 @@ async function renderMarkdownToHtml(
     supportsDetails: boolean;
     toc: boolean;
     imageManifest?: ImageManifestItem[];
+    highlight: boolean;
   }
 ): Promise<string> {
   const processor = unified()
@@ -145,6 +150,15 @@ async function renderMarkdownToHtml(
     .use(rehypeRaw)
     .use(rehypeSanitizePlatformHtml, context.warnings)
     .use(rehypeNormalizeImages, context.imageRefs);
+
+  if (context.highlight) {
+    // Shiki 输出内联颜色 style,juice 会原样保留,使公众号等平台也带语法高亮
+    // 代码块顶栏(圆点+语言)在 transformer 内构建,因为 Shiki 会替换 pre 节点
+    processor.use(rehypeShiki, {
+      theme: "material-theme-palenight",
+      transformers: [createCodeBlockChromeTransformer()]
+    });
+  }
 
   if (context.imageManifest) {
     processor.use(rehypeApplyImageManifest, context.imageManifest);

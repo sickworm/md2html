@@ -4,12 +4,14 @@
 
 本目录是 Markdown 转 HTML 的发布工具，目标平台包括公众号、KM、乐乎等。实现应尽量兼容原生 Markdown：增强能力优先通过 `> [!note]`、`<details>`、特殊引用块、普通标题等可降级语法表达。
 
+因为是发布到其他平台，所以不设置文章背景色，只使用静态样式，导出必须为 inline html。
+
 ## 目录结构
 
 - `packages/core/`：转换核心，负责 Markdown 解析、增强块转换、平台适配、主题内联和资源复制。
 - `packages/cli/`：命令行入口，只处理参数解析、错误输出和调用 core。
 - `packages/web/`：本地 Web UI 入口，只处理页面交互和本地 API，不承载转换逻辑。
-- `themes/jugg-clean/`：默认主题配置和 CSS。
+- `themes/`：主题配置和 CSS，默认主题为 `jugg-clean-v2`。
 - `examples/basic/`：基础 fixture，包含示例 Markdown、图片和图片尺寸配置。
 - `scripts/`：示例素材生成和 fixture 验证脚本。
 
@@ -21,12 +23,12 @@
 - `npm run build`：编译 `packages/core` 和 `packages/cli`。
 - `npm run dev:web`：启动本地 Web UI。
 - `npm run verify:fixtures`：构建并验证基础转换、资源复制、安全 HTML 清理、严格模式等行为。
-- `node packages/cli/dist/index.js examples/basic/article.md --platform wechat --theme jugg-clean -o dist/basic`：手动运行 CLI 示例。
+- `node packages/cli/dist/index.js examples/basic/article.md --platform wechat --theme jugg-clean-v2 -o dist/basic`：手动运行 CLI 示例。
 
 转换 Jugg 文章时，源文件通常在本目录上两级之外，例如：
 
 ```bash
-node packages/cli/dist/index.js "../../Jugg.md/7.Jugg2.X/文章.md" --platform wechat --theme jugg-clean -o dist/article
+node packages/cli/dist/index.js "../../Jugg.md/7.Jugg2.X/文章.md" --platform wechat --theme jugg-clean-v2 -o dist/article
 ```
 
 ## 编码规范
@@ -56,6 +58,52 @@ npm run verify:fixtures
 - Web UI 只做本地转换、预览和导出，不实现云端、上传、登录能力。
 
 ## 已记录的重要变更
+
+### 2026-07-02 jugg-clean 深绿双层配色 + 数据指标卡
+
+- 配色改为**深绿双层**:深墨绿基调 `#0D3225`(H1/H2/H3 标题、加粗、summary),亮绿强调 `#10B981`(标题左强调条、H3 左边框、列表标记、引用边、数据卡数字),链接深绿 `#0a6b4a`(白底长文可读,不用参考稿的高亮绿以保证对比度)。行内代码/表头/toc/callout-tip/details 同步改到该色系。
+- 新增**数据指标卡**语法:`> [!METRICS]` 引用块,其后每行 `数值 | 标签`,渲染成横向数据看板(大数字 + 灰标签)。见 `packages/core/src/markdown/remark-callouts.ts` 的 `applyMetrics`,用 mdast `hName/hProperties/hChildren` 直接输出 hast `table.md2html-metrics`。**用 table 布局而非 flex**,兼容公众号等不支持 flex 的环境;降级到不支持环境时就是普通引用块,逐行 `数值 | 标签` 仍可读。
+- 设计依据:参考稿的高级感来自"深基调 + 亮强调"双层色与数据看板卡,二者已采纳;其 PPT 深色页/调色板/营销头属展示面板元素,不适用于通用文章主题,未采纳。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean --toc -o dist/style-demo
+npm run verify:fixtures
+```
+
+### 2026-07-02 jugg-clean 视觉增强(代码块顶栏 / details / 换行修复)
+
+- 代码块加顶栏:三个 mac 风格圆点 + 语言标签(TypeScript、Bash 等真实文本,公众号可见)。实现关键:顶栏包裹**必须在 Shiki transformer 的 `pre` 钩子内完成**——Shiki 会替换 pre 节点,外部独立 rehype 插件拿不到最终节点(踩坑记录)。见 `packages/core/src/markdown/rehype-code-block-chrome.ts` 的 `createCodeBlockChromeTransformer`,通过 `this.options.lang` 取语言。
+- 行内代码换行截断修复:加 `box-decoration-break: clone`(带 `-webkit-` 前缀),跨行时每段保留完整圆角/边框/内边距;并在 `pre code` 内重置该属性。
+- Details 折叠块补齐样式:原生 `details`/`summary`(generic 平台)用青绿左标记 + 自定义 ▸/▾ 展开箭头 + 圆角阴影;降级 `md2html-details-fallback`(公众号等)做成同款青绿静态卡片。
+- 视觉层次增强:代码块容器、callout、表格、details 加轻微 `box-shadow`;表格改 `border-collapse: separate` + 圆角 + 斑马纹,`overflow: hidden` 裁圆角。
+- 代码块结构变化:`pre.shiki` 现被包进 `section.md2html-code-block`,`theme.css` 中容器管圆角/边框/阴影,pre 去掉自身圆角外边距。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean --toc -o dist/style-demo
+node packages/cli/dist/index.js examples/style-demo/article.md --platform generic --theme jugg-clean --toc -o dist/style-demo-generic
+npm run verify:fixtures
+```
+
+### 2026-07-02 jugg-clean 主题重设计 + Shiki 语法高亮
+
+- 重写 `themes/jugg-clean/theme.css`,建立极速青绿(`#0ca678` / 深色 `#087f5b`)辨识度体系:H2 青绿左强调条 + 底部分隔线、H3 青绿左边框、行内代码淡青底青字、引用块青绿调边淡青底、表头淡青底 + 斑马纹、列表标记与链接青绿点缀。
+- 关键约束:产物经 juice 内联,`theme.css` 只用可内联属性,**不用伪元素(::before)、CSS 变量、媒体查询**;标题强调条用 `border-left` 而非 `::before` 实现,保证公众号不丢样式。
+- 接入 Shiki(`shiki` + `@shikijs/rehype`,主题 `material-theme-palenight`)做代码块语法高亮。Shiki 输出内联颜色 span,juice 原样保留,**公众号/KM/乐乎也带高亮**。仅第二遍正式渲染启用(`renderMarkdownToHtml` 的 `highlight` 开关),第一遍图片收集跳过。代码块背景/配色由 Shiki 承担,`theme.css` 只管间距边框,并重置 `pre code` 避免行内代码青底渗入。
+- `remark-callouts.ts` 为四种 callout 注入中文标签行(NOTE→说明、TIP→建议、WARNING→注意、IMPORTANT→重点),内联在正文首行,替代原生全大写英文标记。callout 采用淡底 + 细左色条(方向三),去掉大色块观感。
+- `theme.json` 字体栈补齐中文(PingFang SC / Microsoft YaHei)。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean --toc -o dist/style-demo
+npm run verify:fixtures
+```
+
+- 关键限制:Shiki 首次运行会异步加载语言/主题,`convertMarkdown` 已是 async 无需额外处理。
 
 ### 2026-06-29 Web UI Markdown 面板交互
 
