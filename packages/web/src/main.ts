@@ -65,7 +65,7 @@ const state: {
   inputFilePath: "article.md",
   articleName: "article",
   platform: "generic",
-  theme: "jugg-clean-v2",
+  theme: "jugg-clean-v4",
   toc: false,
   uiTheme: readUiTheme(),
   viewport: "article",
@@ -83,6 +83,16 @@ let highlightRaf = 0;
 let saveTimer: number | undefined;
 let markdownDirty = false;
 let assetsDirty = false;
+/** 程序化设置 scrollTop 的时间戳，用于在 scroll 事件中区分"人为"和"程序"滚动 */
+let lastProgrammaticSourceScroll = 0;
+let lastProgrammaticPreviewScroll = 0;
+const SYNC_GUARD_MS = 80;
+interface PreviewAnchor { el: Element; line: number }
+let previewAnchors: PreviewAnchor[] = [];
+let previewScrollTarget: number | null = null;
+let previewScrollRaf = 0;
+/** 补偿预览元素 margin-top / padding 导致的视觉偏移（px） */
+const ANCHOR_OFFSET = 12;
 let activeFileHandle: FileSystemFileHandle | null = null;
 let activeDirHandle: FileSystemDirectoryHandle | null = null;
 const fsAccessSupported = typeof window.showOpenFilePicker === "function"
@@ -151,6 +161,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <div class="source-content">
           <select id="articleFileSelect" class="article-select" aria-label="Markdown 文件"></select>
           <div class="markdown-editor">
+            <div id="markdownMirror" class="markdown-mirror" aria-hidden="true"></div>
             <pre id="markdownHighlight" class="markdown-highlight" aria-hidden="true"></pre>
             <textarea id="markdownInput" spellcheck="false" placeholder="# 标题"></textarea>
           </div>
@@ -209,6 +220,7 @@ document.documentElement.dataset.theme = state.uiTheme;
 
 const markdownInput = getElement<HTMLTextAreaElement>("markdownInput");
 const markdownHighlight = getElement<HTMLElement>("markdownHighlight");
+const markdownMirror = getElement("markdownMirror");
 const markdownFileInput = getElement<HTMLInputElement>("markdownFileInput");
 const folderInput = getElement<HTMLInputElement>("folderInput");
 const articleFileSelect = getElement<HTMLSelectElement>("articleFileSelect");
@@ -242,6 +254,9 @@ markdownInput.addEventListener("input", () => {
 
 markdownInput.addEventListener("scroll", () => {
   syncHighlightScroll();
+  if (performance.now() - lastProgrammaticSourceScroll >= SYNC_GUARD_MS) {
+    syncPreviewFromSource();
+  }
 }, { passive: true });
 
 markdownFileInput.addEventListener("change", async () => {
@@ -593,15 +608,183 @@ function scheduleHighlight(): void {
   });
 }
 
-/** 重建高亮叠加层内容并同步滚动位置。 */
+/** 重建高亮叠加层内容、更新 mirror 并同步滚动位置。 */
 function renderHighlight(): void {
   markdownHighlight.innerHTML = highlightMarkdown(markdownInput.value);
+  updateMirror();
   syncHighlightScroll();
 }
 
 function syncHighlightScroll(): void {
   markdownHighlight.scrollTop = markdownInput.scrollTop;
   markdownHighlight.scrollLeft = markdownInput.scrollLeft;
+}
+
+// ---------------------------------------------------------------------------
+// 联动滚动 — 基于 mirror div 实现源码行号 ↔ 像素偏移的精确映射，
+// 结合预览 iframe 中的 data-source-line 属性做到块级对齐。
+// ---------------------------------------------------------------------------
+
+/** 用 markdown 文本更新 mirror div，每行包裹在带 data-line 属性的 span 中。 */
+function updateMirror(): void {
+  const lines = markdownInput.value.split("\n");
+  markdownMirror.innerHTML = lines
+    .map((line, i) => `<span data-line="${i + 1}">${escapeHtml(line)}</span>`)
+    .join("<br>");
+}
+
+/** 查询 mirror div，返回第 line 行首个字符的像素偏移（1-based）。 */
+function lineToPixel(line: number): number {
+  const marker = markdownMirror.querySelector(`[data-line="${line}"]`);
+  if (marker instanceof HTMLElement) {
+    return marker.offsetTop;
+  }
+  // 如果指定行不存在，用最后一行
+  const last = markdownMirror.lastElementChild;
+  if (last instanceof HTMLElement) {
+    return last.offsetTop + last.offsetHeight;
+  }
+  return 0;
+}
+
+/** 根据像素偏移，二分查找最近的源码行号（offsetTop 随行号单调递增）。 */
+function pixelToLine(pixel: number): number {
+  const markers = markdownMirror.querySelectorAll<HTMLElement>("[data-line]");
+  if (markers.length === 0) {
+    return 1;
+  }
+  let lo = 0;
+  let hi = markers.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1;
+    if (markers[mid].offsetTop <= pixel) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return parseInt(markers[lo].dataset.line ?? "1", 10);
+}
+
+/** 遍历预览 iframe，收集所有带 data-source-line 的块级元素作为滚动锚点。 */
+function collectPreviewAnchors(): void {
+  previewAnchors = [];
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  const doc = previewFrame.contentDocument;
+  if (!doc) {
+    return;
+  }
+  const elements = doc.querySelectorAll<HTMLElement>("[data-source-line]");
+  for (const el of elements) {
+    const line = parseInt(el.dataset.sourceLine ?? "0", 10);
+    if (line > 0) {
+      previewAnchors.push({ el, line });
+    }
+  }
+}
+
+/** 找到预览视口顶部可见的第一个锚点。 */
+function findPreviewAnchorAtTop(): PreviewAnchor | null {
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  const doc = previewFrame.contentDocument;
+  if (!doc) {
+    return null;
+  }
+  for (const anchor of previewAnchors) {
+    const rect = anchor.el.getBoundingClientRect();
+    if (rect.bottom > 0) {
+      return anchor;
+    }
+  }
+  return null;
+}
+
+/**
+ * 找到预览中与目标源码行最接近的锚点。
+ * 返回 line ≤ targetLine 的最近锚点（该行所在的块），
+ * 无匹配时回退到首个 block。
+ */
+function findNearestAnchor(targetLine: number): PreviewAnchor | null {
+  let best: PreviewAnchor | null = null;
+  for (const anchor of previewAnchors) {
+    if (anchor.line <= targetLine) {
+      best = anchor;
+    } else {
+      break;
+    }
+  }
+  return best ?? previewAnchors[0] ?? null;
+}
+
+/**
+ * rAF 驱动的 lerp 动画：逐帧将预览平滑滚动到 previewScrollTarget。
+ * 衰减系数动态调整 —— 距离远时步长大（快），靠近目标时步长小（慢），
+ * 实现 ease-out 过渡效果。
+ */
+function animatePreviewScroll(): void {
+  if (previewScrollTarget === null) {
+    previewScrollRaf = 0;
+    return;
+  }
+
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  const win = previewFrame.contentWindow;
+  if (!win) {
+    previewScrollRaf = 0;
+    return;
+  }
+
+  const current = win.scrollY;
+  const diff = previewScrollTarget - current;
+
+  if (Math.abs(diff) < 1) {
+    lastProgrammaticPreviewScroll = performance.now();
+    win.scrollTo({ top: previewScrollTarget, behavior: "instant" as ScrollBehavior });
+    previewScrollTarget = null;
+    previewScrollRaf = 0;
+    return;
+  }
+
+  // 衰减系数 0.12–0.5，距离越远越快
+  const factor = Math.min(0.5, Math.max(0.12, Math.abs(diff) / 800));
+  lastProgrammaticPreviewScroll = performance.now();
+  win.scrollTo({ top: Math.round(current + diff * factor), behavior: "instant" as ScrollBehavior });
+
+  previewScrollRaf = requestAnimationFrame(animatePreviewScroll);
+}
+
+/** textarea 滚动时，驱动预览平滑跟随。 */
+function syncPreviewFromSource(): void {
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  const doc = previewFrame.contentDocument;
+  const win = previewFrame.contentWindow;
+  if (!doc || !win || previewAnchors.length === 0) {
+    return;
+  }
+
+  const sourceLine = pixelToLine(markdownInput.scrollTop);
+  const anchor = findNearestAnchor(sourceLine);
+  if (anchor) {
+    const rect = anchor.el.getBoundingClientRect();
+    previewScrollTarget = win.scrollY + rect.top - ANCHOR_OFFSET;
+  } else {
+    const ratio = markdownInput.scrollTop / Math.max(1, markdownInput.scrollHeight - markdownInput.clientHeight);
+    previewScrollTarget = ratio * Math.max(1, doc.documentElement.scrollHeight - win.innerHeight);
+  }
+
+  if (!previewScrollRaf) {
+    previewScrollRaf = requestAnimationFrame(animatePreviewScroll);
+  }
+}
+
+/** 预览滚动时，驱动 textarea 跟随。 */
+function syncSourceFromPreview(): void {
+  const anchor = findPreviewAnchorAtTop();
+  if (anchor) {
+    const pixel = lineToPixel(anchor.line);
+    lastProgrammaticSourceScroll = performance.now();
+    markdownInput.scrollTop = Math.max(0, pixel - ANCHOR_OFFSET);
+  }
 }
 
 async function convertNow(): Promise<void> {
@@ -655,7 +838,7 @@ async function loadThemes(): Promise<void> {
   const themeSelect = getElement<HTMLSelectElement>("themeSelect");
   themeSelect.innerHTML = ordered.map((theme) => `<option value="${escapeAttr(theme)}">${escapeHtml(theme)}</option>`).join("");
   const persisted = readTheme();
-  state.theme = ordered.includes(persisted) ? persisted : (ordered[0] ?? "jugg-clean-v2");
+  state.theme = ordered.includes(persisted) ? persisted : (ordered[0] ?? "jugg-clean-v4");
   themeSelect.value = state.theme;
 }
 
@@ -695,6 +878,45 @@ function renderResult(): void {
 
 let previewThemeKey = "";
 
+/** 预览 iframe 滚动事件监听状态：记录当前绑定的 iframe，避免重复绑定。 */
+let boundPreviewFrame: HTMLIFrameElement | null = null;
+
+function bindPreviewScroll(): void {
+  const previewFrame = getElement<HTMLIFrameElement>("previewFrame");
+  if (boundPreviewFrame === previewFrame) {
+    return;
+  }
+  // 移除旧的监听
+  if (boundPreviewFrame?.contentWindow) {
+    boundPreviewFrame.contentWindow.removeEventListener("scroll", onPreviewScroll);
+  }
+  boundPreviewFrame = previewFrame;
+  previewFrame.addEventListener("load", () => {
+    const win = previewFrame.contentWindow;
+    if (win) {
+      win.addEventListener("scroll", onPreviewScroll, { passive: true });
+
+      // 用户开始手动滚动/触摸预览 → 立即取消 rAF 动画
+      const cancelAnimation = () => {
+        if (previewScrollRaf) {
+          cancelAnimationFrame(previewScrollRaf);
+          previewScrollRaf = 0;
+          previewScrollTarget = null;
+        }
+      };
+      win.addEventListener("wheel", cancelAnimation, { passive: true });
+      win.addEventListener("touchstart", cancelAnimation, { passive: true });
+    }
+    collectPreviewAnchors();
+  });
+}
+
+function onPreviewScroll(): void {
+  if (performance.now() - lastProgrammaticPreviewScroll >= SYNC_GUARD_MS) {
+    syncSourceFromPreview();
+  }
+}
+
 /**
  * 渲染预览 iframe。首次或跨主题时整文档写入一次;之后只增量替换 <article> 与 <style>,
  * 避免每次输入都整页重载导致的白屏闪烁。
@@ -707,6 +929,8 @@ function renderPreview(result: ConvertResponse): void {
   const baseHref = new URL(result.imageBaseUrl, window.location.origin).href;
 
   if (!doc || !doc.body || previewThemeKey !== themeKey) {
+    previewAnchors = [];
+    bindPreviewScroll();
     previewFrame.srcdoc = injectBaseHref(result.html, baseHref);
     previewThemeKey = themeKey;
     return;
@@ -727,6 +951,8 @@ function renderPreview(result: ConvertResponse): void {
   } else {
     doc.body.innerHTML = parsed.body.innerHTML;
   }
+  // 增量更新后重新收集锚点
+  collectPreviewAnchors();
 }
 
 /** 在预览 HTML 的 <head> 注入 <base>,使相对图片路径解析到服务端输出目录。 */
@@ -909,12 +1135,17 @@ function selectArticleFile(pathValue: string): void {
   renderHighlight();
 }
 
+/** 移除 HTML 中的 data-source-line / data-source-line-end 属性，避免污染剪切板。 */
+function stripSourceLines(html: string): string {
+  return html.replace(/\s*data-source-line(?:-end)?="[^"]*"/g, "");
+}
+
 async function copyInlineHtml(): Promise<void> {
   if (!state.result) {
     return;
   }
 
-  await navigator.clipboard.writeText(state.result.inlineHtml);
+  await navigator.clipboard.writeText(stripSourceLines(state.result.inlineHtml));
   showStatus("inline HTML 已复制");
 }
 
@@ -923,7 +1154,7 @@ async function copyRichText(): Promise<void> {
     return;
   }
 
-  const html = absolutizeImageSources(state.result.inlineHtml, state.result.imageBaseUrl);
+  const html = absolutizeImageSources(stripSourceLines(state.result.inlineHtml), state.result.imageBaseUrl);
   const text = htmlToText(html);
 
   if ("ClipboardItem" in window) {
@@ -1278,9 +1509,9 @@ function readTheme(): string {
   return localStorage.getItem("md2html-theme") ?? "";
 }
 
-/** 主题排序:v2 优先,其次 v1,其余按名称升序,保证下拉顺序稳定。 */
+/** 主题排序:v4 优先,其次 v3/v2/v1,其余按名称升序,保证下拉顺序稳定。 */
 function orderThemes(themes: string[]): string[] {
-  const preferred = ["jugg-clean-v2", "jugg-clean-v1"];
+  const preferred = ["jugg-clean-v4", "jugg-clean-v3", "jugg-clean-v2", "jugg-clean-v1"];
   const ranked = preferred.filter((name) => themes.includes(name));
   const rest = themes
     .filter((name) => !preferred.includes(name))

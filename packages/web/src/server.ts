@@ -54,7 +54,7 @@ app.post("/api/convert", async (req, res, next) => {
   try {
     const body = req.body as ConvertRequest;
     const platform = parsePlatform(body.platform);
-    const theme = typeof body.theme === "string" && body.theme.trim() ? body.theme : "jugg-clean-v2";
+    const theme = typeof body.theme === "string" && body.theme.trim() ? body.theme : "jugg-clean-v4";
     const jobId = crypto.randomUUID();
     const jobRoot = await fs.mkdtemp(path.join(os.tmpdir(), "md2html-web-"));
     const inputRelativePath = safeRelativePath(body.inputFilePath || "article.md");

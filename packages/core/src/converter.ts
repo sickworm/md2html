@@ -20,6 +20,8 @@ import { loadArticleAssets, resolveAssetsConfigPath } from "./assets/assets-conf
 import { createImageManifest, type ImageRef } from "./assets/image-manifest.js";
 import { rehypeDetails } from "./markdown/rehype-details.js";
 import { createCodeBlockChromeTransformer } from "./markdown/rehype-code-block-chrome.js";
+import { rehypeSourceLine } from "./markdown/rehype-source-line.js";
+import { rehypeBreakLongWords } from "./markdown/rehype-break-long-words.js";
 import {
   rehypeApplyImageManifest,
   rehypeNormalizeImages
@@ -31,6 +33,7 @@ import { writeOutput } from "./output/write-output.js";
 import { getPlatformAdapter } from "./platforms/index.js";
 import { inlineStyles } from "./theme/inline-styles.js";
 import { loadTheme } from "./theme/theme-loader.js";
+import type { CalloutConfig } from "./theme/theme-loader.js";
 
 export async function convertMarkdown(options: ConvertOptions): Promise<ConvertResult> {
   const platform: PlatformId = options.platform ?? "generic";
@@ -48,7 +51,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     supportsDetails: true,
     toc: false,
     imageManifest: undefined,
-    highlight: false
+    highlight: false,
+    callout: theme.config.callout
   });
 
   const imageManifest = await createImageManifest({
@@ -65,13 +69,19 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
   }
 
   const finalImageRefs: ImageRef[] = [];
+  // 仅 break-word 策略(默认)下用零宽空格补断点:让超长词能在词中换行,而 CSS 的
+  // overflow-wrap 做不到这点。break-all 已靠 CSS 断词,normal 是明确不想断,均不注入。
+  const longWordBreak = theme.config.longWordBreak ?? "break-word";
+  const longWordMinLength = longWordBreak === "break-word" ? theme.config.longWordMinLength ?? 16 : undefined;
   const bodyHtml = await renderMarkdownToHtml(markdown, {
     imageRefs: finalImageRefs,
     warnings,
     supportsDetails: adapter.capabilities.supportsDetails,
     toc: Boolean(options.toc),
     imageManifest,
-    highlight: true
+    highlight: true,
+    callout: theme.config.callout,
+    longWordMinLength
   });
   const adaptedBodyHtml = adapter.adaptHtml(bodyHtml, warnings);
   if (options.strict && warnings.some((warning) => warning.code === "unsupported-html")) {
@@ -140,12 +150,14 @@ async function renderMarkdownToHtml(
     toc: boolean;
     imageManifest?: ImageManifestItem[];
     highlight: boolean;
+    callout?: CalloutConfig;
+    longWordMinLength?: number;
   }
 ): Promise<string> {
   const processor = unified()
     .use(remarkParse)
     .use(remarkGfm)
-    .use(remarkCallouts, context.warnings)
+    .use(remarkCallouts, context.warnings, context.callout)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
     .use(rehypeSanitizePlatformHtml, context.warnings)
@@ -170,6 +182,8 @@ async function renderMarkdownToHtml(
       warnings: context.warnings
     })
     .use(rehypeToc, { enabled: context.toc })
+    .use(rehypeBreakLongWords, { minWordLength: context.longWordMinLength })
+    .use(rehypeSourceLine)
     .use(rehypeStringify)
     .process(markdown);
 

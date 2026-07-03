@@ -1,5 +1,6 @@
 import { visit } from "unist-util-visit";
 import type { ConversionWarning } from "../types.js";
+import type { CalloutConfig } from "../theme/theme-loader.js";
 
 const variants = new Set(["NOTE", "TIP", "WARNING", "IMPORTANT"]);
 const CALLOUT_MARKER_RE = /^\[!(\w+)\](?:[ \t]*\r?\n[ \t]*|[ \t]+|$)/;
@@ -12,7 +13,7 @@ const CALLOUT_LABELS: Record<string, string> = {
   important: "重点"
 };
 
-export function remarkCallouts(warnings: ConversionWarning[] = []) {
+export function remarkCallouts(warnings: ConversionWarning[] = [], callout?: CalloutConfig) {
   return (tree: unknown) => {
     visit(tree as never, "blockquote", (node: any) => {
       const first = node.children?.[0];
@@ -54,7 +55,14 @@ export function remarkCallouts(warnings: ConversionWarning[] = []) {
       }
 
       const lower = variant.toLowerCase();
-      injectLabel(node, CALLOUT_LABELS[lower]);
+      const style = callout?.types[lower];
+      if (style) {
+        // 新样式:注入悬挂圆徽(仅图标字符),中文标签放到 title 上;不再内联标签文字
+        injectBadge(node, style.icon, style.label);
+      } else {
+        // 旧样式:把中文标签内联到首行开头(其他主题保持不变)
+        injectLabel(node, CALLOUT_LABELS[lower]);
+      }
 
       node.data = {
         ...(node.data ?? {}),
@@ -87,6 +95,23 @@ function injectLabel(node: any, label: string): void {
   }
 
   node.children.unshift({ type: "paragraph", children: [labelNode] });
+}
+
+/**
+ * 注入一枚悬挂圆徽:图标字符包在 span 里,中文标签放到 title(sanitizer 允许 title)。
+ * 圆徽作为 callout 的首个子节点,配合生成的 CSS 绝对定位到卡片左上外沿。
+ */
+function injectBadge(node: any, icon: string, label: string): void {
+  const badgeNode = {
+    type: "emphasis",
+    data: {
+      hName: "span",
+      hProperties: { className: ["md2html-callout-badge"], title: label }
+    },
+    children: [{ type: "text", value: icon }]
+  };
+
+  node.children.unshift(badgeNode);
 }
 
 /**

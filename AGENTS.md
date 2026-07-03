@@ -59,6 +59,22 @@ npm run verify:fixtures
 
 ## 已记录的重要变更
 
+### 2026-07-03 新增 jugg-clean-v3 主题(重排绿色层级)
+
+- 复制 `jugg-clean-v2` 为 `themes/jugg-clean-v3`,只重排「绿色层级」,让每个绿只承担一种角色,解决 v2 里 H1/H2/H3/加粗全同色、亮绿链接白底不达标的问题:
+  - **深墨绿 `#0D3225`**:只给结构标题 H1/H2/H3(近黑锚点)。
+  - **深翠绿 `#0a6b4a`**:白底上的「文字型强调」——链接 / H4 / 加粗 / 行内代码文字,对比度 ~5.3:1 达 WCAG AA。
+  - **亮翠绿 `#10B981`**:只做装饰——强调条 / 列表点 / 引用边 / H1 主标签下边框。
+- 五处针对性改动:**H1** 放大到 30px / 700 / 字距 -0.03em + 2px 亮绿满宽下边框(主标签签名);**H4** 改为大写 eyebrow 小标签(深翠绿 / 13.5px / letter-spacing 0.06em / uppercase),不再与正文加粗混淆;**链接** 亮绿→深翠绿(下边框同步);**行内代码** 底色 `#F0FDF4`→`#E9F7F0`、文字→深翠绿;**加粗** 近黑墨绿→深翠绿,正文里「发绿高亮」与近黑标题分层。
+- 主题按目录名动态扫描加载(`theme-loader.ts` / `server.ts` 的 `/api/themes`),新增目录即自动出现在 Web UI;`packages/web/src/main.ts` 的 `orderThemes` 已把 v3 排在首位并默认选中。默认主题仍是 v2(CLI `--theme` 默认值未改),v2 保持不动。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean-v3 --toc -o dist/v3-demo
+npm run verify:fixtures
+```
+
 ### 2026-07-02 jugg-clean 深绿双层配色 + 数据指标卡
 
 - 配色改为**深绿双层**:深墨绿基调 `#0D3225`(H1/H2/H3 标题、加粗、summary),亮绿强调 `#10B981`(标题左强调条、H3 左边框、列表标记、引用边、数据卡数字),链接深绿 `#0a6b4a`(白底长文可读,不用参考稿的高亮绿以保证对比度)。行内代码/表头/toc/callout-tip/details 同步改到该色系。

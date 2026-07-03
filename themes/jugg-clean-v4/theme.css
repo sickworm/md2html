@@ -1,0 +1,448 @@
+/* jugg-clean-v4 主题
+ * 说明:产物会经 juice 内联到每个元素的 style 上,以便粘贴到公众号/KM/乐乎。
+ * 因此本文件只用可内联的属性,不使用伪元素(::before)、CSS 变量或媒体查询。
+ * 代码块背景与语法高亮由 Shiki 生成的内联颜色承担,本文件只负责间距与边框。
+ * 不设置页面/文章背景色——分享的文章无法设置背景色,留空以适配宿主底色。
+ *
+ * 继承 v3 的「绿色三层」体系,针对「中英夹杂长文右边界锯齿 / 观感不整齐 / 标题层级塌陷」做优化:
+ * A. 右边界:行高 1.8→1.75;正文 text-wrap:pretty + word-break:break-all,
+ *    让 coreLibraryDesugaringEnabled 等长英文词填满当前行再断,消除大片留白参差
+ *    (代价:普通英文词也可能中断;代码块 pre 已豁免为 word-break:normal)。
+ * B. 行内代码去噪:薄荷绿底 #E9F7F0 → 近无色浅灰 #F2F4F3,文字 → 深灰绿 #3A4A44,
+ *    让高密度 <code> 融入文字流而非作为跳色块打断中文。
+ * C. 标题层级重整(核心):v3 的 H3/H4/H5 同为 18px 导致层级塌陷,改为字号阶梯 +
+ *    颜色角色区分——H3 19px 近黑墨绿+绿条(结构锚点),H4 17px 深翠绿(主题小标题,
+ *    去掉对中文无效的 uppercase/eyebrow),H5 16px 近黑墨绿加粗(最深层小标签)。
+ *    H5 上间距加大,避免紧跟单行内容时粘连、block 感不足。
+ * D. 颜色统一:列表项显式设为正文色 #4A5568(此前继承了更深的 #2D3748,比正文深)。
+ * 保留 v3:加粗 strong 仍为深翠绿 #0a6b4a。
+ */
+
+.md2html-article {
+  max-width: 680px;
+  margin: 0 auto;
+  color: #2D3748;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  line-height: 1.75;
+  font-size: 16px;
+  /* A. 右边界防锯齿:默认只断「超长到一行放不下」的词(overflow-wrap),不碰普通英文词。
+   *    换行策略可由 theme.json 的 longWordBreak 覆盖(break-word/break-all/normal,见 theme-loader)。
+   *    text-wrap:pretty 顺带优化段末孤字。 */
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* H1:放大字号、字重 700、收紧字距,2px 亮绿满宽下边框作「文章主标签签名」,与 H2 的 1px 淡边拉开层级 */
+.md2html-article h1 {
+  margin: 32px 0 18px;
+  padding-bottom: 12px;
+  color: #0D3225;
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+  text-wrap: balance;
+  border-bottom: 2px solid #10B981;
+}
+
+/* H2:章节分隔。最大字号 + 满宽下边框;text-wrap:pretty 替代 balance——
+ *    balance 会把长枚举标题(如「…Compose、@Parcelize、DataBinding…」)每行强行均分,
+ *    导致第一行提前截断留大空;pretty 只防孤字、按自然宽度填满,长标题更顺 */
+.md2html-article h2 {
+  margin: 52px 0 16px;
+  padding-bottom: 8px;
+  color: #0D3225;
+  font-weight: 700;
+  font-size: 22px;
+  line-height: 1.4;
+  text-wrap: pretty;
+  border-bottom: 1px solid rgba(13, 50, 37, 0.08);
+}
+
+/* H3:小节。近黑 + 左绿条(专属签名),18px。与 H2 靠字号+边框形式区分 */
+.md2html-article h3 {
+  margin: 44px 0 16px;
+  padding-left: 12px;
+  color: #0D3225;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 1.45;
+  text-wrap: pretty;
+  border-left: 3px solid #0a6b4a;
+}
+
+/* H4:主题。17px 加粗 + 深墨绿 #1A4535(比 H3 近黑略浅一档降权,但仍深于翠绿,
+ *    不会比 H3 亮而层级倒挂)。上间距 36 / 下 12 强非对称,块感明确 */
+.md2html-article h4 {
+  margin: 36px 0 12px;
+  color: #1A4535;
+  font-weight: 700;
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+/* H5/H6:最深层小标签(eyebrow)。16px(不小于正文)+ 加粗 + 字距 + 正文深灰 #2D3748;
+ *    颜色 H3→H4→H5 为 #0D3225→#1A4535→#2D3748 单向递增且均不浅于正文,标题权重始终 ≥ 正文;
+ *    与 H4 靠「字距标签化 + 更收敛的颜色」区分,而非靠变小变浅 */
+.md2html-article h5,
+.md2html-article h6 {
+  margin: 32px 0 10px;
+  color: #2D3748;
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+/* C. 段落:改为对称的「只留下间距」,垂直呼吸交给标题上间距,节奏更规律 */
+.md2html-article p {
+  margin: 0 0 18px;
+  color: #4A5568;
+}
+
+/* 加粗:深翠绿,在正文里「发绿高亮」(沿用 v3) */
+.md2html-article strong {
+  color: #0a6b4a;
+  font-weight: 600;
+}
+
+.md2html-article em {
+  color: #4A5568;
+}
+
+.md2html-article del {
+  color: #A0AEC0;
+}
+
+/* 链接:深翠绿(白底达标可读) + 亮绿下划线 + 左右 6px 间隙
+ * 使用 text-decoration-line 而非 border-bottom:
+ * - 下划线仅跟随文字,不穿入 padding 区域,间隙真正可见
+ * - text-underline-offset 控制下划线与文字的间距 */
+.md2html-article a {
+  color: #0a6b4a;
+  text-decoration-line: underline;
+  text-decoration-color: #10B981;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+  border-bottom: none;
+  padding: 0 6px;
+}
+
+.md2html-article img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 24px auto;
+  border-radius: 6px;
+}
+
+.md2html-article img.md2html-inline-image {
+  display: inline-block;
+  margin: 0 2px;
+  vertical-align: middle;
+  border-radius: 0;
+}
+
+/* 列表:列表通常是上文的展开,故收紧与上文的间距(负上边距抵消与段落的 margin 折叠,
+ *    实际间距 ≈ 12px < 段落间距 18px),形成「引导句 → 展开项」的从属感 */
+.md2html-article ul,
+.md2html-article ol {
+  margin: -6px 0 18px;
+  padding-left: 24px;
+}
+
+.md2html-article li {
+  margin: 8px 0;
+  color: #4A5568;
+}
+
+.md2html-article ul li::marker {
+  color: #10B981;
+}
+
+/* 引用块:Callout info 卡片风格 — 全圆角、无图标、无左色条、淡蓝灰底 */
+.md2html-article blockquote {
+  margin: 22px 0 18px;
+  padding: 18px 18px 16px;
+  border-radius: 8px;
+  background: #F2F5FA;
+  color: #2D3748;
+}
+
+.md2html-article blockquote p {
+  margin: 0;
+}
+
+.md2html-article blockquote p + p {
+  margin-top: 8px;
+}
+
+/* B. 行内代码去噪:近无色浅灰底 + 接近正文的深灰绿字,收紧 padding,
+ *    让高密度 <code> 融入文字流而非作为跳色块打断中文;box-decoration-break 保证换行圆角完整 */
+.md2html-article code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #F2F4F3;
+  color: #3A4A44;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 代码块容器:顶栏(mac 圆点 + 语言标签) + 深色代码区,整体圆角与阴影 */
+.md2html-code-block {
+  margin: 24px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #2a3040;
+  box-shadow: 0 6px 20px rgba(20, 26, 46, 0.15);
+}
+
+.md2html-code-header {
+  display: flex;
+  align-items: center;
+  padding: 9px 14px;
+  background: #232838;
+  border-bottom: 1px solid #313747;
+  line-height: 1;
+}
+
+.md2html-code-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  margin-right: 7px;
+}
+
+.md2html-code-lang {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: #8b93a7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/* 代码块:背景与配色由 Shiki 内联生成,容器已管圆角/边框,这里去掉自身圆角与外边距。
+ * word-break:normal 抵消 .md2html-article 上的 break-word 继承,避免代码长标识符被从中间硬断。 */
+.md2html-code-block pre,
+.md2html-article pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: normal;
+  margin: 0;
+  padding: 16px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* 未被容器包裹的裸 pre(理论上不出现)仍保留独立圆角边框 */
+.md2html-article > pre {
+  margin: 18px 0;
+  border-radius: 10px;
+  border: 1px solid #2a3040;
+}
+
+.md2html-article pre code {
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  -webkit-box-decoration-break: initial;
+  box-decoration-break: initial;
+}
+
+/* Callout:视觉由 theme.json 的 callout 配置生成(见 callout-css.ts),此处不再声明 */
+
+/* Details 折叠块:原生 details(generic) */
+.md2html-article details {
+  margin: 20px 0;
+  padding: 0 16px;
+  border: 1px solid #d7e3dd;
+  border-left: 3px solid #10B981;
+  border-radius: 8px;
+  background: #fbfdfc;
+  box-shadow: 0 2px 8px rgba(13, 50, 37, 0.05);
+}
+
+.md2html-article details[open] {
+  padding-bottom: 4px;
+}
+
+.md2html-article summary {
+  padding: 12px 0;
+  font-weight: 600;
+  color: #0D3225;
+  cursor: pointer;
+  list-style: none;
+}
+
+.md2html-article summary::-webkit-details-marker {
+  display: none;
+}
+
+.md2html-article summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 8px;
+  color: #10B981;
+  transition: transform 0.15s ease;
+}
+
+.md2html-article details[open] summary::before {
+  content: "▾";
+}
+
+/* Details 降级块(wechat/km/乐乎):无法折叠,做成绿色标记的静态卡片 */
+.md2html-details-fallback {
+  margin: 20px 0;
+  padding: 0 16px 8px;
+  border: 1px solid #d7e3dd;
+  border-left: 3px solid #10B981;
+  border-radius: 8px;
+  background: #fbfdfc;
+  box-shadow: 0 2px 8px rgba(13, 50, 37, 0.05);
+}
+
+.md2html-details-summary {
+  padding: 12px 0;
+  margin-bottom: 4px;
+  font-weight: 600;
+  color: #0D3225;
+  border-bottom: 1px solid rgba(13, 50, 37, 0.08);
+}
+
+/* 表格:表头淡青底 + 斑马纹。
+ * 用 border-collapse: separate + overflow:hidden + border-radius 让 <table> 读起来像
+ * 「圆角卡片块」而非「数据表」,避免公众号/KM 等平台触发表格自动样式覆盖自定义内联样式。
+ * 不使用 box-shadow:其 blur 在平台上会向四周散焦,白底对比下上/左侧浮出额外阴影。 */
+/* 通用表格选择器一律带 :not(.md2html-metrics),避免指标卡 table/td 被通用 border 污染:
+ * 否则 juice 内联后指标卡 td 的 style 里会混入通用 border-right:1px solid #EDF2F7,
+ * 靠后续 border:none 的 shorthand 覆盖;部分分享平台对 shorthand 覆盖 longhand 处理不稳,
+ * 会保留 border-right 导致指标卡冒出网格线、形变成"表格"。 */
+.md2html-article table:not(.md2html-metrics) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 20px 0;
+  font-size: 15px;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.md2html-article table:not(.md2html-metrics) th,
+.md2html-article table:not(.md2html-metrics) td {
+  border-bottom: 1px solid #EDF2F7;
+  border-right: 1px solid #EDF2F7;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.md2html-article table:not(.md2html-metrics) tr td:last-child,
+.md2html-article table:not(.md2html-metrics) tr th:last-child {
+  border-right: none;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.md2html-article table:not(.md2html-metrics) thead th {
+  background: #e8f7f0;
+  color: #0a6b4a;
+  font-weight: 600;
+}
+
+.md2html-article table:not(.md2html-metrics) tbody tr:nth-child(even) {
+  background: #F7FAF9;
+}
+
+/* 分割线 */
+.md2html-article hr {
+  border: none;
+  border-top: 1px solid rgba(13, 50, 37, 0.08);
+  margin: 36px 0;
+}
+
+/* 目录 */
+.md2html-toc {
+  margin: 24px 0;
+  padding: 16px 20px;
+  background: #F2FBF7;
+  border: 1px solid #a7e6cd;
+  border-radius: 8px;
+}
+
+.md2html-toc-title {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #0a6b4a;
+}
+
+.md2html-toc ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.md2html-toc li {
+  margin: 4px 0;
+}
+
+.md2html-toc a {
+  color: #4A5568;
+  text-decoration: none;
+}
+
+.md2html-toc-level-3 {
+  margin-left: 12px;
+}
+
+/* 数据指标卡:白底细边框 + 亮绿大数字(对齐参考版)
+ * 用 table 布局保证公众号等不支持 flex 的环境也能横向排列。
+ * 同样用 separate + overflow + radius 维持卡片观感、规避平台表格识别;不用 box-shadow。
+ * 选择器带 .md2html-article 前缀以压过通用 table/td 样式的特异性。 */
+.md2html-article table.md2html-metrics {
+  width: 100%;
+  max-width: 560px;
+  border-collapse: separate;
+  border-spacing: 24px 0;
+  margin: 20px auto;
+  font-size: 15px;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.md2html-article table.md2html-metrics tbody tr {
+  background: transparent;
+}
+
+.md2html-article td.md2html-metric {
+  text-align: center;
+  width: 33.33%;
+  padding: 24px 16px;
+  border: none;
+  background: transparent;
+}
+
+.md2html-metric-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: #10B981;
+  line-height: 1.1;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.md2html-metric-label {
+  font-size: 14px;
+  font-weight: 400;
+  color: #6b7c74;
+  margin-top: 4px;
+}
