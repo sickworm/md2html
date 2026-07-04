@@ -50,32 +50,32 @@
  *    balance 会把长枚举标题(如「…Compose、@Parcelize、DataBinding…」)每行强行均分,
  *    导致第一行提前截断留大空;pretty 只防孤字、按自然宽度填满,长标题更顺 */
 .md2html-article h2 {
-  margin: 52px 0 16px;
-  padding-bottom: 8px;
-  color: #0A1310;
+  margin: 56px 0 18px;
+  padding-bottom: 10px;
+  color: #171A19;
   font-weight: 700;
-  font-size: 22px;
+  font-size: 23px;
   line-height: 1.4;
   text-wrap: pretty;
-  border-bottom: 1px solid rgba(13, 50, 37, 0.08);
+  border-bottom: 1px solid #10B981;
 }
 
 /* H3:小节。近黑 + 左绿条(专属签名),18px。与 H2 靠字号+边框形式区分 */
 .md2html-article h3 {
-  margin: 44px 0 16px;
-  padding-left: 12px;
-  color: #0A1310;
+  margin: 38px 0 14px;
+  padding-left: 10px;
+  color: #232625;
   font-weight: 600;
   font-size: 18px;
   line-height: 1.45;
   text-wrap: pretty;
-  border-left: 3px solid #10B981;
+  border-left: 2px solid #10B981;
 }
 
 /* H4:主题。17px 加粗 + 深墨绿 #0A1310。上间距 36 / 下 12 强非对称,块感明确 */
 .md2html-article h4 {
-  margin: 36px 0 12px;
-  color: #0A1310;
+  margin: 32px 0 10px;
+  color: #232625;
   font-weight: 700;
   font-size: 17px;
   line-height: 1.5;
@@ -85,12 +85,27 @@
  *    单向递增且均不浅于正文,标题权重始终 ≥ 正文; */
 .md2html-article h5,
 .md2html-article h6 {
-  margin: 32px 0 10px;
-  color: #0A1310;
-  font-weight: 700;
+  margin: 24px 0 8px;
+  color: #232625;
+  font-weight: 600;
   font-size: 16px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   line-height: 1.5;
+}
+
+.md2html-article .md2html-heading-prefix {
+  display: inline-block;
+  margin-right: 7px;
+  font-weight: 700;
+}
+
+.md2html-article h4 .md2html-heading-prefix {
+  color: #10B981;
+}
+
+.md2html-article h5 .md2html-heading-prefix,
+.md2html-article h6 .md2html-heading-prefix {
+  color: #10B981;
 }
 
 /* C. 段落:改为对称的「只留下间距」,垂直呼吸交给标题上间距,节奏更规律 */
@@ -146,7 +161,7 @@
  *    实际间距 ≈ 12px < 段落间距 18px),形成「引导句 → 展开项」的从属感 */
 .md2html-article ul,
 .md2html-article ol {
-  margin: -8px 0 18px;
+  margin: -10px 0 18px;
   padding-left: 32px;
 }
 
@@ -156,7 +171,7 @@
 }
 
 .md2html-article ul li::marker {
-  color: #10B981;
+/*  color: #10B981;*/
 }
 
 /* 引用块:Callout info 卡片风格 — 全圆角、无图标、无左色条、淡蓝灰底 */

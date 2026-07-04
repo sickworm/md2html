@@ -20,6 +20,7 @@ import { loadArticleAssets, resolveAssetsConfigPath } from "./assets/assets-conf
 import { createImageManifest, type ImageRef } from "./assets/image-manifest.js";
 import { rehypeDetails } from "./markdown/rehype-details.js";
 import { createCodeBlockChromeTransformer } from "./markdown/rehype-code-block-chrome.js";
+import { rehypeHeadingPrefixes } from "./markdown/rehype-heading-prefixes.js";
 import { rehypeSourceLine } from "./markdown/rehype-source-line.js";
 import { rehypeBreakLongWords } from "./markdown/rehype-break-long-words.js";
 import {
@@ -33,7 +34,7 @@ import { writeOutput } from "./output/write-output.js";
 import { getPlatformAdapter } from "./platforms/index.js";
 import { inlineStyles } from "./theme/inline-styles.js";
 import { loadTheme } from "./theme/theme-loader.js";
-import type { CalloutConfig } from "./theme/theme-loader.js";
+import type { CalloutConfig, HeadingPrefixConfig } from "./theme/theme-loader.js";
 
 export async function convertMarkdown(options: ConvertOptions): Promise<ConvertResult> {
   const platform: PlatformId = options.platform ?? "generic";
@@ -52,7 +53,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     toc: false,
     imageManifest: undefined,
     highlight: false,
-    callout: theme.config.callout
+    callout: theme.config.callout,
+    headingPrefixes: theme.config.headingPrefixes
   });
 
   const imageManifest = await createImageManifest({
@@ -81,6 +83,7 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     imageManifest,
     highlight: true,
     callout: theme.config.callout,
+    headingPrefixes: theme.config.headingPrefixes,
     longWordMinLength
   });
   const adaptedBodyHtml = adapter.adaptHtml(bodyHtml, warnings);
@@ -151,6 +154,7 @@ async function renderMarkdownToHtml(
     imageManifest?: ImageManifestItem[];
     highlight: boolean;
     callout?: CalloutConfig;
+    headingPrefixes?: HeadingPrefixConfig;
     longWordMinLength?: number;
   }
 ): Promise<string> {
@@ -183,6 +187,7 @@ async function renderMarkdownToHtml(
     })
     .use(rehypeToc, { enabled: context.toc })
     .use(rehypeBreakLongWords, { minWordLength: context.longWordMinLength })
+    .use(rehypeHeadingPrefixes, context.headingPrefixes)
     .use(rehypeSourceLine)
     .use(rehypeStringify)
     .process(markdown);

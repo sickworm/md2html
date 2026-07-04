@@ -59,6 +59,19 @@ npm run verify:fixtures
 
 ## 已记录的重要变更
 
+### 2026-07-04 jugg-clean-v4 标题层级重整(H1/H3 保留签名装饰 + H4/H5 真实前缀)
+
+- 保留 v4 当前方向里的 **H1 亮绿下划线** 和 **H3 左侧亮绿线**，但重排 H2/H3 强弱关系：H2 改为更强的章节分隔(23px / 更大上间距 / 深灰标题色 / 灰色长下划线)，H3 保留左绿线但降为 2px、缩短上下间距并使用偏灰标题色，避免 H3 装饰强度倒挂 H2。
+- 新增主题配置 `headingPrefixes`，v4 配置为 `h4: "#"`、`h5: "·"`；实现见 `packages/core/src/markdown/rehype-heading-prefixes.ts`。前缀注入为真实 `<span class="md2html-heading-prefix">` 文本节点，而不是 CSS `::before`，确保 Web 预览和公众号/KM/乐乎 inline HTML 导出一致。
+- H4/H5 区分策略：H4 保持 17px / 700 / 深灰并用亮绿 `#` 作为局部主题标记；H5 降到 15px / 600 / 浅灰并用灰色 `·` 作为子点标记。该方案参考成熟文档/出版排版中“小层级用文字权重 + 轻符号，而非继续堆边框”的做法。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean-v4 --toc -o dist/v4-heading-demo
+npm run verify:fixtures
+```
+
 ### 2026-07-03 新增 jugg-clean-v3 主题(重排绿色层级)
 
 - 复制 `jugg-clean-v2` 为 `themes/jugg-clean-v3`,只重排「绿色层级」,让每个绿只承担一种角色,解决 v2 里 H1/H2/H3/加粗全同色、亮绿链接白底不达标的问题:

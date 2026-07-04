@@ -4,6 +4,10 @@
   "imageMaxWidth": 680,
   "codeLineWrap": true,
   "longWordBreak": "break-word",
+  "headingPrefixes": {
+    "h4": "#",
+    "h5": ""
+  },
   "callout": {
     "radius": 8,
     "types": {

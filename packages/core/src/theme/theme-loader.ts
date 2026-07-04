@@ -18,6 +18,8 @@ export interface CalloutConfig {
   types: Record<string, CalloutTypeStyle>;
 }
 
+export type HeadingPrefixConfig = Partial<Record<"h1" | "h2" | "h3" | "h4" | "h5" | "h6", string>>;
+
 export interface ThemeConfig {
   contentMaxWidth: number;
   fontFamily: string;
@@ -35,6 +37,7 @@ export interface ThemeConfig {
    * 仅超过此长度的连续英文/代码 token 才在词中插入断点,普通英文词不受影响。
    */
   longWordMinLength?: number;
+  headingPrefixes?: HeadingPrefixConfig;
   callout?: CalloutConfig;
 }
 
