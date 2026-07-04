@@ -3,19 +3,6 @@
  * 因此本文件只用可内联的属性,不使用伪元素(::before)、CSS 变量或媒体查询。
  * 代码块背景与语法高亮由 Shiki 生成的内联颜色承担,本文件只负责间距与边框。
  * 不设置页面/文章背景色——分享的文章无法设置背景色,留空以适配宿主底色。
- *
- * 继承 v3 的「绿色三层」体系,针对「中英夹杂长文右边界锯齿 / 观感不整齐 / 标题层级塌陷」做优化:
- * A. 右边界:行高 1.8→1.75;正文 text-wrap:pretty + word-break:break-all,
- *    让 coreLibraryDesugaringEnabled 等长英文词填满当前行再断,消除大片留白参差
- *    (代价:普通英文词也可能中断;代码块 pre 已豁免为 word-break:normal)。
- * B. 行内代码去噪:薄荷绿底 #E9F7F0 → 近无色浅灰 #F2F4F3,文字 → 深灰绿 #3A4A44,
- *    让高密度 <code> 融入文字流而非作为跳色块打断中文。
- * C. 标题层级重整(核心):v3 的 H3/H4/H5 同为 18px 导致层级塌陷,改为字号阶梯 +
- *    颜色角色区分——H3 19px 近黑墨绿+绿条(结构锚点),H4 17px 深翠绿(主题小标题,
- *    去掉对中文无效的 uppercase/eyebrow),H5 16px 近黑墨绿加粗(最深层小标签)。
- *    H5 上间距加大,避免紧跟单行内容时粘连、block 感不足。
- * D. 颜色统一:列表项显式设为正文色 #4A5568(此前继承了更深的 #0A1310,比正文深)。
- * 保留 v3:加粗 strong 仍为深翠绿 #0a6b4a。
  */
 
 .md2html-article {
@@ -54,7 +41,7 @@
   padding-bottom: 10px;
   color: #171A19;
   font-weight: 700;
-  font-size: 23px;
+  font-size: 22px;
   line-height: 1.4;
   text-wrap: pretty;
   border-bottom: 1px solid #10B981;
@@ -66,7 +53,7 @@
   padding-left: 10px;
   color: #232625;
   font-weight: 600;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1.45;
   text-wrap: pretty;
   border-left: 2px solid #10B981;
@@ -85,7 +72,7 @@
  *    单向递增且均不浅于正文,标题权重始终 ≥ 正文; */
 .md2html-article h5,
 .md2html-article h6 {
-  margin: 24px 0 8px;
+  margin: 28px 0 8px;
   color: #232625;
   font-weight: 600;
   font-size: 16px;
@@ -111,24 +98,24 @@
 /* C. 段落:改为对称的「只留下间距」,垂直呼吸交给标题上间距,节奏更规律 */
 .md2html-article p {
   margin: 0 0 18px;
-  color: #4A5568;
+  color: #252933;
 }
 
-/* 加粗:深翠绿,在正文里「发绿高亮」(沿用 v3) */
+/* 加粗:不用 text-shadow/描边模拟半字重,避免 Windows 中文字体边缘发毛;靠深翠绿和 500 形成轻强调。 */
 .md2html-article strong {
   color: #10B981;
   font-weight: 500;
 }
 
 .md2html-article em {
-  color: #4A5568;
+  color: #252933;
 }
 
 .md2html-article del {
   color: #A0AEC0;
 }
 
-/* 链接:深翠绿(白底达标可读) + 亮绿下划线 + 左右 6px 间隙
+/* 链接:深翠绿(白底达标可读) + 亮绿下划线 + 左右间隙
  * 使用 text-decoration-line 而非 border-bottom:
  * - 下划线仅跟随文字,不穿入 padding 区域,间隙真正可见
  * - text-underline-offset 控制下划线与文字的间距 */
@@ -139,7 +126,7 @@
   text-decoration-thickness: 2px;
   text-underline-offset: 6px;
   border-bottom: none;
-  padding: 0 6px;
+  padding: 0 2px;
 }
 
 .md2html-article img {
@@ -167,12 +154,20 @@
 
 .md2html-article li {
   margin: 8px 0;
-  color: #4A5568;
+  padding-left: 8px;
+  color: #252933;
 }
 
-.md2html-article ul li::marker {
-/*  color: #10B981;*/
+.md2html-article li::marker {
+  color: #0a6b4a;
+  font-size: 0.94em;
 }
+
+/*.md2html-article ol > li::marker {
+  color: #0a6b4a;
+  font-size: 0.94em;
+  font-weight: 600;
+}*/
 
 /* 引用块:Callout info 卡片风格 — 全圆角、无图标、无左色条、淡蓝灰底 */
 .md2html-article blockquote {
@@ -196,10 +191,10 @@
 .md2html-article code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.88em;
-  padding: 3px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
-  background: #F2F4F3;
-  color: #3A4A44;
+  background: #F3F4F6;
+  color: #344054;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
@@ -408,7 +403,7 @@
 }
 
 .md2html-toc a {
-  color: #4A5568;
+  color: #252933;
   text-decoration: none;
 }
 

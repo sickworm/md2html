@@ -59,6 +59,28 @@ npm run verify:fixtures
 
 ## 已记录的重要变更
 
+### 2026-07-04 jugg-clean-v4 strong 轻强调修正
+
+- v4 的 `.md2html-article strong` 使用 `color: #0a6b4a` + `font-weight: 500` 做轻强调，不再用 `text-shadow` 或描边模拟半字重；原因是 Windows 中文字体在 text-shadow 下容易出现边缘发毛/锯齿。
+- 中文系统字体常把 500/600 映射到有限字重档位，纯粹调 `550`、`575` 通常不会产生稳定差异；当前方案用更深的文字型强调色补足可见度，避免 600 过重。
+- 验证入口:
+
+```bash
+npm run build
+node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat --theme jugg-clean-v4 --toc -o dist/v4-heading-demo
+```
+
+### 2026-07-04 Web UI Markdown 编辑区快捷键
+
+- Markdown `textarea` 新增常用编辑快捷键，入口在 `packages/web/src/main.ts` 的 `handleMarkdownKeydown`：`Ctrl/Cmd+S` 立即保存、`Ctrl/Cmd+B` 加粗、`Ctrl/Cmd+I` 斜体、`Ctrl/Cmd+K` 链接、`Ctrl/Cmd+\`` 行内代码、`Ctrl/Cmd+Shift+X` 删除线、`Ctrl/Cmd+Alt+1/2/3` 标题、`Ctrl/Cmd+Shift+.` 引用、`Ctrl/Cmd+Shift+7/8` 有序/无序列表、`Tab/Shift+Tab` 缩进/反缩进。
+- Markdown 面板标题栏新增「快捷键」按钮，点击打开快捷键引导弹窗，支持点遮罩或 Esc 关闭。
+- 快捷键只改 Web UI 输入区文本，不进入 `packages/core`；程序化编辑会复用现有高亮、预览转换和自动保存流程。`Ctrl/Cmd+S` 走已有 File System Access 写回逻辑，未通过浏览器文件/目录句柄打开时只提示先打开源文件。文本编辑优先用 `document.execCommand("insertText")` 进入浏览器原生撤销栈，确保 `Ctrl/Cmd+Z` 可回退快捷键操作。
+- 验证入口:
+
+```bash
+npm run build
+```
+
 ### 2026-07-04 jugg-clean-v4 标题层级重整(H1/H3 保留签名装饰 + H4/H5 真实前缀)
 
 - 保留 v4 当前方向里的 **H1 亮绿下划线** 和 **H3 左侧亮绿线**，但重排 H2/H3 强弱关系：H2 改为更强的章节分隔(23px / 更大上间距 / 深灰标题色 / 灰色长下划线)，H3 保留左绿线但降为 2px、缩短上下间距并使用偏灰标题色，避免 H3 装饰强度倒挂 H2。

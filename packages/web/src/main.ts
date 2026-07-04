@@ -153,6 +153,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
             <button class="tool-button" id="openMarkdown" type="button"><i data-lucide="file-text"></i><span>文件</span></button>
             <button class="tool-button" id="openFolder" type="button"><i data-lucide="folder-open"></i><span>目录</span></button>
             <button class="tool-button" id="loadExample" type="button"><i data-lucide="flask-conical"></i><span>示例</span></button>
+            <button class="tool-button" id="showShortcuts" type="button"><i data-lucide="keyboard"></i><span>快捷键</span></button>
             <button class="icon-button" id="toggleSourcePane" type="button" title="收起 Markdown 区" aria-label="收起 Markdown 区">
               <i data-lucide="panel-left-close"></i>
             </button>
@@ -217,6 +218,30 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <div class="warnings" id="warnings"></div>
       </aside>
     </section>
+    <div class="shortcut-overlay" id="shortcutOverlay" hidden>
+      <section class="shortcut-dialog" role="dialog" aria-modal="true" aria-labelledby="shortcutTitle">
+        <div class="shortcut-head">
+          <h2 id="shortcutTitle">Markdown 快捷键</h2>
+          <button class="icon-button" id="closeShortcuts" type="button" title="关闭" aria-label="关闭">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <dl class="shortcut-list">
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>S</kbd></dt><dd>保存</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>B</kbd></dt><dd>加粗</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>I</kbd></dt><dd>斜体</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>K</kbd></dt><dd>链接</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>\`</kbd></dt><dd>行内代码</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>Shift</kbd><kbd>X</kbd></dt><dd>删除线</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>Alt</kbd><kbd>1/2/3</kbd></dt><dd>标题</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>Shift</kbd><kbd>.</kbd></dt><dd>引用</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>Shift</kbd><kbd>7</kbd></dt><dd>有序列表</dd></div>
+          <div><dt><kbd>Ctrl/Cmd</kbd><kbd>Shift</kbd><kbd>8</kbd></dt><dd>无序列表</dd></div>
+          <div><dt><kbd>Tab</kbd></dt><dd>缩进</dd></div>
+          <div><dt><kbd>Shift</kbd><kbd>Tab</kbd></dt><dd>反缩进</dd></div>
+        </dl>
+      </section>
+    </div>
   </main>
 `;
 
@@ -236,6 +261,13 @@ const workspace = document.querySelector<HTMLElement>(".workspace")!;
 getElement("openMarkdown").addEventListener("click", () => void pickFile());
 getElement("openFolder").addEventListener("click", () => void pickFolder());
 getElement("loadExample").addEventListener("click", loadExample);
+getElement("showShortcuts").addEventListener("click", showShortcuts);
+getElement("closeShortcuts").addEventListener("click", hideShortcuts);
+getElement("shortcutOverlay").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    hideShortcuts();
+  }
+});
 getElement("copyInline").addEventListener("click", copyInlineHtml);
 getElement("copyRich").addEventListener("click", copyRichText);
 getElement("exportAssets").addEventListener("click", exportAssets);
@@ -249,6 +281,11 @@ sourcePane.addEventListener("dragenter", handleSourceDragEnter);
 sourcePane.addEventListener("dragover", handleSourceDragOver);
 sourcePane.addEventListener("dragleave", handleSourceDragLeave);
 sourcePane.addEventListener("drop", handleSourceDrop);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !getElement("shortcutOverlay").hidden) {
+    hideShortcuts();
+  }
+});
 
 markdownInput.addEventListener("input", () => {
   state.markdown = markdownInput.value;
@@ -264,6 +301,7 @@ markdownInput.addEventListener("scroll", () => {
     syncPreviewFromSource();
   }
 }, { passive: true });
+markdownInput.addEventListener("keydown", handleMarkdownKeydown);
 
 markdownFileInput.addEventListener("change", async () => {
   const file = markdownFileInput.files?.[0];
@@ -637,6 +675,294 @@ async function authorizeSave(): Promise<void> {
   if (await ensureWritePermission(handle)) {
     await saveNow();
   }
+}
+
+function handleMarkdownKeydown(event: KeyboardEvent): void {
+  if (event.isComposing) {
+    return;
+  }
+
+  const hasCommandModifier = event.ctrlKey || event.metaKey;
+  const key = event.key.toLowerCase();
+
+  if (event.key === "Tab") {
+    event.preventDefault();
+    indentSelectedLines(event.shiftKey ? "out" : "in");
+    return;
+  }
+
+  if (!hasCommandModifier) {
+    return;
+  }
+
+  if (!event.altKey && !event.shiftKey && key === "s") {
+    event.preventDefault();
+    void saveFromShortcut();
+    return;
+  }
+
+  if (!event.altKey && !event.shiftKey && key === "b") {
+    event.preventDefault();
+    wrapSelection("**", "**", "加粗文本");
+    return;
+  }
+
+  if (!event.altKey && !event.shiftKey && key === "i") {
+    event.preventDefault();
+    wrapSelection("*", "*", "斜体文本");
+    return;
+  }
+
+  if (!event.altKey && !event.shiftKey && key === "k") {
+    event.preventDefault();
+    insertMarkdownLink();
+    return;
+  }
+
+  if (!event.altKey && !event.shiftKey && event.key === "`") {
+    event.preventDefault();
+    wrapSelection("`", "`", "code");
+    return;
+  }
+
+  if (!event.altKey && event.shiftKey && key === "x") {
+    event.preventDefault();
+    wrapSelection("~~", "~~", "删除线文本");
+    return;
+  }
+
+  if (!event.altKey && event.shiftKey && event.code === "Period") {
+    event.preventDefault();
+    toggleLinePrefix("> ");
+    return;
+  }
+
+  if (event.altKey && !event.shiftKey && /^[1-3]$/.test(event.key)) {
+    event.preventDefault();
+    toggleHeading(Number(event.key));
+    return;
+  }
+
+  if (!event.altKey && event.shiftKey && event.code === "Digit7") {
+    event.preventDefault();
+    toggleOrderedList();
+    return;
+  }
+
+  if (!event.altKey && event.shiftKey && event.code === "Digit8") {
+    event.preventDefault();
+    toggleLinePrefix("- ");
+  }
+}
+
+async function saveFromShortcut(): Promise<void> {
+  window.clearTimeout(saveTimer);
+  if (!activeFileHandle && !activeDirHandle) {
+    showStatus("请先用「文件」或「目录」打开源文件后保存", true);
+    return;
+  }
+
+  if (!markdownDirty && !assetsDirty) {
+    setSaveStatus("已保存", "saved");
+    return;
+  }
+
+  setSaveStatus("保存中…", "saving");
+  await saveNow();
+}
+
+function commitMarkdownEdit(value: string, selectionStart: number, selectionEnd = selectionStart): void {
+  const previous = markdownInput.value;
+  if (previous === value) {
+    markdownInput.setSelectionRange(selectionStart, selectionEnd);
+    return;
+  }
+
+  const scrollTop = markdownInput.scrollTop;
+  const scrollLeft = markdownInput.scrollLeft;
+  const diff = findTextReplacement(previous, value);
+  markdownInput.focus();
+  markdownInput.setSelectionRange(diff.start, diff.end);
+
+  const inserted = document.execCommand?.("insertText", false, diff.text) ?? false;
+  if (inserted) {
+    state.markdown = markdownInput.value;
+    markdownDirty = true;
+    markdownInput.setSelectionRange(selectionStart, selectionEnd);
+    markdownInput.scrollTop = scrollTop;
+    markdownInput.scrollLeft = scrollLeft;
+    scheduleHighlight();
+    scheduleConvert();
+    scheduleSave();
+    return;
+  }
+
+  markdownInput.value = value;
+  state.markdown = value;
+  markdownDirty = true;
+  markdownInput.setSelectionRange(selectionStart, selectionEnd);
+  markdownInput.scrollTop = scrollTop;
+  markdownInput.scrollLeft = scrollLeft;
+  markdownInput.focus();
+  scheduleHighlight();
+  scheduleConvert();
+  scheduleSave();
+}
+
+function findTextReplacement(previous: string, next: string): { start: number; end: number; text: string } {
+  let start = 0;
+  while (start < previous.length && start < next.length && previous[start] === next[start]) {
+    start += 1;
+  }
+
+  let previousEnd = previous.length;
+  let nextEnd = next.length;
+  while (previousEnd > start && nextEnd > start && previous[previousEnd - 1] === next[nextEnd - 1]) {
+    previousEnd -= 1;
+    nextEnd -= 1;
+  }
+
+  return {
+    start,
+    end: previousEnd,
+    text: next.slice(start, nextEnd)
+  };
+}
+
+function wrapSelection(prefix: string, suffix: string, placeholder: string): void {
+  const value = markdownInput.value;
+  const start = markdownInput.selectionStart;
+  const end = markdownInput.selectionEnd;
+  const selected = value.slice(start, end);
+
+  const selectedHasExactWrapper = selected.startsWith(prefix)
+    && selected.endsWith(suffix)
+    && (prefix !== "*" || (!selected.startsWith("**") && !selected.endsWith("**")));
+  if (selected && selectedHasExactWrapper) {
+    const inner = selected.slice(prefix.length, selected.length - suffix.length);
+    commitMarkdownEdit(
+      `${value.slice(0, start)}${inner}${value.slice(end)}`,
+      start,
+      start + inner.length
+    );
+    return;
+  }
+
+  if (
+    start >= prefix.length
+    && value.slice(start - prefix.length, start) === prefix
+    && value.slice(end, end + suffix.length) === suffix
+  ) {
+    commitMarkdownEdit(
+      `${value.slice(0, start - prefix.length)}${selected}${value.slice(end + suffix.length)}`,
+      start - prefix.length,
+      end - prefix.length
+    );
+    return;
+  }
+
+  const body = selected || placeholder;
+  commitMarkdownEdit(
+    `${value.slice(0, start)}${prefix}${body}${suffix}${value.slice(end)}`,
+    start + prefix.length,
+    start + prefix.length + body.length
+  );
+}
+
+function insertMarkdownLink(): void {
+  const value = markdownInput.value;
+  const start = markdownInput.selectionStart;
+  const end = markdownInput.selectionEnd;
+  const selected = value.slice(start, end);
+  const label = selected || "链接文本";
+  const url = /^https?:\/\//i.test(selected) ? selected : "https://";
+  const next = `[${label}](${url})`;
+  const urlStart = start + label.length + 3;
+  commitMarkdownEdit(
+    `${value.slice(0, start)}${next}${value.slice(end)}`,
+    urlStart,
+    urlStart + url.length
+  );
+}
+
+function toggleHeading(level: number): void {
+  const hashes = "#".repeat(level);
+  transformSelectedLines((lines) => {
+    const headingPattern = /^\s{0,3}(#{1,6})\s+/;
+    const contentLines = lines.filter((line) => line.trim().length > 0);
+    const shouldRemove = contentLines.length > 0
+      && contentLines.every((line) => headingPattern.exec(line)?.[1].length === level);
+
+    return lines.map((line) => {
+      if (!line.trim()) {
+        return shouldRemove ? line : `${hashes} `;
+      }
+      const withoutHeading = line.replace(headingPattern, "");
+      return shouldRemove ? withoutHeading : `${hashes} ${withoutHeading}`;
+    });
+  });
+}
+
+function toggleLinePrefix(prefix: string): void {
+  transformSelectedLines((lines) => {
+    const contentLines = lines.filter((line) => line.trim().length > 0);
+    const shouldRemove = contentLines.length > 0
+      && contentLines.every((line) => line.startsWith(prefix));
+
+    return lines.map((line) => {
+      if (!line.trim()) {
+        return line;
+      }
+      return shouldRemove ? line.slice(prefix.length) : `${prefix}${line}`;
+    });
+  });
+}
+
+function toggleOrderedList(): void {
+  const orderedPattern = /^(\s*)\d+\.\s+/;
+  transformSelectedLines((lines) => {
+    const contentLines = lines.filter((line) => line.trim().length > 0);
+    const shouldRemove = contentLines.length > 0
+      && contentLines.every((line) => orderedPattern.test(line));
+    let index = 1;
+
+    return lines.map((line) => {
+      if (!line.trim()) {
+        return line;
+      }
+      if (shouldRemove) {
+        return line.replace(orderedPattern, "$1");
+      }
+      return `${index++}. ${line}`;
+    });
+  });
+}
+
+function indentSelectedLines(direction: "in" | "out"): void {
+  transformSelectedLines((lines) => lines.map((line) => {
+    if (direction === "in") {
+      return `  ${line}`;
+    }
+    return line.startsWith("  ") ? line.slice(2) : line.replace(/^\t/, "");
+  }));
+}
+
+function transformSelectedLines(transform: (lines: string[]) => string[]): void {
+  const value = markdownInput.value;
+  const start = markdownInput.selectionStart;
+  const end = markdownInput.selectionEnd;
+  const lineStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
+  const endForLine = end > start && value[end - 1] === "\n" ? end - 1 : end;
+  const nextLineBreak = value.indexOf("\n", endForLine);
+  const lineEnd = nextLineBreak === -1 ? value.length : nextLineBreak;
+  const block = value.slice(lineStart, lineEnd);
+  const nextBlock = transform(block.split("\n")).join("\n");
+
+  commitMarkdownEdit(
+    `${value.slice(0, lineStart)}${nextBlock}${value.slice(lineEnd)}`,
+    lineStart,
+    lineStart + nextBlock.length
+  );
 }
 
 function isAbortError(error: unknown): boolean {
@@ -1304,6 +1630,18 @@ function toggleOutputPane(): void {
   localStorage.setItem("md2html-output-collapsed", String(state.outputCollapsed));
   renderOutputPane();
   applyPaneWidths();
+}
+
+function showShortcuts(): void {
+  const overlay = getElement("shortcutOverlay");
+  overlay.hidden = false;
+  getElement<HTMLButtonElement>("closeShortcuts").focus();
+}
+
+function hideShortcuts(): void {
+  const overlay = getElement("shortcutOverlay");
+  overlay.hidden = true;
+  getElement<HTMLButtonElement>("showShortcuts").focus();
 }
 
 async function handleSourceDrop(event: DragEvent): Promise<void> {

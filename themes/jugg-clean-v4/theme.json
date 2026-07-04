@@ -1,6 +1,6 @@
 {
   "contentMaxWidth": 680,
-  "fontFamily": "-apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+  "fontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", \"Noto Sans CJK SC\", \"Source Han Sans SC\", \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif",
   "imageMaxWidth": 680,
   "codeLineWrap": true,
   "longWordBreak": "break-word",

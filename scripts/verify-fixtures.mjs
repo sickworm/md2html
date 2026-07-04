@@ -4,11 +4,15 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+const npmBuildCommand = process.platform === "win32" ? "cmd.exe" : "npm";
+const npmBuildArgs = process.platform === "win32"
+  ? ["/d", "/s", "/c", "npm", "run", "build"]
+  : ["run", "build"];
 const basicOutputDir = path.resolve("dist/basic");
 const tmpDir = path.resolve("dist/fixture-inputs");
 
 await execFileAsync("node", ["scripts/create-sample-image.mjs"]);
-await execFileAsync("npm", ["run", "build"]);
+await execFileAsync(npmBuildCommand, npmBuildArgs);
 await fs.rm(basicOutputDir, { recursive: true, force: true });
 await fs.rm(tmpDir, { recursive: true, force: true });
 await fs.mkdir(tmpDir, { recursive: true });

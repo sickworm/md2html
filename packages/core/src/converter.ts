@@ -21,6 +21,7 @@ import { createImageManifest, type ImageRef } from "./assets/image-manifest.js";
 import { rehypeDetails } from "./markdown/rehype-details.js";
 import { createCodeBlockChromeTransformer } from "./markdown/rehype-code-block-chrome.js";
 import { rehypeHeadingPrefixes } from "./markdown/rehype-heading-prefixes.js";
+import { rehypeListContent } from "./markdown/rehype-list-content.js";
 import { rehypeSourceLine } from "./markdown/rehype-source-line.js";
 import { rehypeBreakLongWords } from "./markdown/rehype-break-long-words.js";
 import {
@@ -187,6 +188,7 @@ async function renderMarkdownToHtml(
     })
     .use(rehypeToc, { enabled: context.toc })
     .use(rehypeBreakLongWords, { minWordLength: context.longWordMinLength })
+    .use(rehypeListContent)
     .use(rehypeHeadingPrefixes, context.headingPrefixes)
     .use(rehypeSourceLine)
     .use(rehypeStringify)
