@@ -30,7 +30,7 @@
   letter-spacing: -0.03em;
   line-height: 1.25;
   text-wrap: balance;
-  border-bottom: 2px solid #10B981;
+  border-bottom: 3px solid #10B981;
 }
 
 /* H2:章节分隔。最大字号 + 满宽下边框;text-wrap:pretty 替代 balance——
@@ -49,22 +49,22 @@
 
 /* H3:小节。近黑 + 左绿条(专属签名),18px。与 H2 靠字号+边框形式区分 */
 .md2html-article h3 {
-  margin: 38px 0 14px;
-  padding-left: 10px;
+  margin: 52px 0 10px;
   color: #232625;
   font-weight: 600;
   font-size: 19px;
   line-height: 1.45;
   text-wrap: pretty;
-  border-left: 2px solid #10B981;
+  border-left: 3px solid #10B981;
+  padding: 1px 0 1px 8px;
 }
 
 /* H4:主题。17px 加粗 + 深墨绿 #0A1310。上间距 36 / 下 12 强非对称,块感明确 */
 .md2html-article h4 {
-  margin: 32px 0 10px;
+  margin: 36px 0 10px;
   color: #232625;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 18px;
   line-height: 1.5;
 }
 
@@ -173,13 +173,11 @@
 .md2html-article blockquote {
   margin: 24px 0 20px;
   padding: 14px 18px 14px 18px;
-  border-left: 3px solid #9AA8B6;
-  border-top: 1px solid #E7ECF1;
-  border-right: 1px solid #E7ECF1;
-  border-bottom: 1px solid #E7ECF1;
   border-radius: 7px;
-  background: #FBFCFE;
-  color: #3F4A56;
+  border-left: 3px solid #ACC2B9;
+  border-color: #ACC2B9;
+  background: #F8FAF9;
+  color: #3E4843;
 }
 
 .md2html-article blockquote p {
