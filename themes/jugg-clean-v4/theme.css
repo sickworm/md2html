@@ -171,11 +171,15 @@
 
 /* 引用块:Callout info 卡片风格 — 全圆角、无图标、无左色条、淡蓝灰底 */
 .md2html-article blockquote {
-  margin: 22px 0 18px;
-  padding: 18px 18px 16px;
-  border-radius: 8px;
-  background: #F2F5FA;
-  color: #0A1310;
+  margin: 24px 0 20px;
+  padding: 14px 18px 14px 18px;
+  border-left: 3px solid #9AA8B6;
+  border-top: 1px solid #E7ECF1;
+  border-right: 1px solid #E7ECF1;
+  border-bottom: 1px solid #E7ECF1;
+  border-radius: 7px;
+  background: #FBFCFE;
+  color: #3F4A56;
 }
 
 .md2html-article blockquote p {
