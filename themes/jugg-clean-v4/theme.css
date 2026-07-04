@@ -14,14 +14,14 @@
  *    颜色角色区分——H3 19px 近黑墨绿+绿条(结构锚点),H4 17px 深翠绿(主题小标题,
  *    去掉对中文无效的 uppercase/eyebrow),H5 16px 近黑墨绿加粗(最深层小标签)。
  *    H5 上间距加大,避免紧跟单行内容时粘连、block 感不足。
- * D. 颜色统一:列表项显式设为正文色 #4A5568(此前继承了更深的 #2D3748,比正文深)。
+ * D. 颜色统一:列表项显式设为正文色 #4A5568(此前继承了更深的 #0A1310,比正文深)。
  * 保留 v3:加粗 strong 仍为深翠绿 #0a6b4a。
  */
 
 .md2html-article {
   max-width: 680px;
   margin: 0 auto;
-  color: #2D3748;
+  color: #0A1310;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
   line-height: 1.75;
   font-size: 16px;
@@ -37,7 +37,7 @@
 .md2html-article h1 {
   margin: 32px 0 18px;
   padding-bottom: 12px;
-  color: #0D3225;
+  color: #0A1310;
   font-weight: 700;
   font-size: 30px;
   letter-spacing: -0.03em;
@@ -52,7 +52,7 @@
 .md2html-article h2 {
   margin: 52px 0 16px;
   padding-bottom: 8px;
-  color: #0D3225;
+  color: #0A1310;
   font-weight: 700;
   font-size: 22px;
   line-height: 1.4;
@@ -64,31 +64,29 @@
 .md2html-article h3 {
   margin: 44px 0 16px;
   padding-left: 12px;
-  color: #0D3225;
+  color: #0A1310;
   font-weight: 600;
   font-size: 18px;
   line-height: 1.45;
   text-wrap: pretty;
-  border-left: 3px solid #0a6b4a;
+  border-left: 3px solid #10B981;
 }
 
-/* H4:主题。17px 加粗 + 深墨绿 #1A4535(比 H3 近黑略浅一档降权,但仍深于翠绿,
- *    不会比 H3 亮而层级倒挂)。上间距 36 / 下 12 强非对称,块感明确 */
+/* H4:主题。17px 加粗 + 深墨绿 #0A1310。上间距 36 / 下 12 强非对称,块感明确 */
 .md2html-article h4 {
   margin: 36px 0 12px;
-  color: #1A4535;
+  color: #0A1310;
   font-weight: 700;
   font-size: 17px;
   line-height: 1.5;
 }
 
-/* H5/H6:最深层小标签(eyebrow)。16px(不小于正文)+ 加粗 + 字距 + 正文深灰 #2D3748;
- *    颜色 H3→H4→H5 为 #0D3225→#1A4535→#2D3748 单向递增且均不浅于正文,标题权重始终 ≥ 正文;
- *    与 H4 靠「字距标签化 + 更收敛的颜色」区分,而非靠变小变浅 */
+/* H5/H6:最深层小标签(eyebrow)。16px(不小于正文)+ 加粗 + 字距;
+ *    单向递增且均不浅于正文,标题权重始终 ≥ 正文; */
 .md2html-article h5,
 .md2html-article h6 {
   margin: 32px 0 10px;
-  color: #2D3748;
+  color: #0A1310;
   font-weight: 700;
   font-size: 16px;
   letter-spacing: 0.04em;
@@ -103,8 +101,8 @@
 
 /* 加粗:深翠绿,在正文里「发绿高亮」(沿用 v3) */
 .md2html-article strong {
-  color: #0a6b4a;
-  font-weight: 600;
+  color: #10B981;
+  font-weight: 500;
 }
 
 .md2html-article em {
@@ -148,8 +146,8 @@
  *    实际间距 ≈ 12px < 段落间距 18px),形成「引导句 → 展开项」的从属感 */
 .md2html-article ul,
 .md2html-article ol {
-  margin: -6px 0 18px;
-  padding-left: 24px;
+  margin: -8px 0 18px;
+  padding-left: 32px;
 }
 
 .md2html-article li {
@@ -167,7 +165,7 @@
   padding: 18px 18px 16px;
   border-radius: 8px;
   background: #F2F5FA;
-  color: #2D3748;
+  color: #0A1310;
 }
 
 .md2html-article blockquote p {
@@ -277,7 +275,7 @@
 .md2html-article summary {
   padding: 12px 0;
   font-weight: 600;
-  color: #0D3225;
+  color: #0A1310;
   cursor: pointer;
   list-style: none;
 }
@@ -313,7 +311,7 @@
   padding: 12px 0;
   margin-bottom: 4px;
   font-weight: 600;
-  color: #0D3225;
+  color: #0A1310;
   border-bottom: 1px solid rgba(13, 50, 37, 0.08);
 }
 

@@ -178,9 +178,14 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
             <h2>预览</h2>
             <p id="convertStatus">等待输入</p>
           </div>
-          <div class="segmented small" id="viewportGroup" aria-label="预览宽度">
-            <button data-viewport="article" type="button">文章</button>
-            <button data-viewport="phone" type="button">手机</button>
+          <div class="panel-actions">
+            <button class="icon-button" id="reloadPreview" type="button" title="重新加载文件和 CSS" aria-label="重新加载文件和 CSS">
+              <i data-lucide="refresh-cw"></i>
+            </button>
+            <div class="segmented small" id="viewportGroup" aria-label="预览宽度">
+              <button data-viewport="article" type="button">文章</button>
+              <button data-viewport="phone" type="button">手机</button>
+            </div>
           </div>
         </div>
         <div class="preview-stage" id="previewStage">
@@ -235,6 +240,7 @@ getElement("copyInline").addEventListener("click", copyInlineHtml);
 getElement("copyRich").addEventListener("click", copyRichText);
 getElement("exportAssets").addEventListener("click", exportAssets);
 getElement("exportHtml").addEventListener("click", () => void exportHtml());
+getElement("reloadPreview").addEventListener("click", () => void reloadPreview());
 getElement("uiThemeButton").addEventListener("click", toggleUiTheme);
 getElement("toggleSourcePane").addEventListener("click", toggleSourcePane);
 getElement("toggleOutputPane").addEventListener("click", toggleOutputPane);
@@ -341,6 +347,46 @@ async function initialize(): Promise<void> {
 function scheduleConvert(delay = 300): void {
   window.clearTimeout(convertTimer);
   convertTimer = window.setTimeout(convertNow, delay);
+}
+
+async function reloadPreview(): Promise<void> {
+  const button = getElement<HTMLButtonElement>("reloadPreview");
+  button.disabled = true;
+  window.clearTimeout(convertTimer);
+  window.clearTimeout(saveTimer);
+  showStatus("重新加载中…");
+
+  try {
+    const currentPath = state.inputFilePath;
+    await loadThemes();
+
+    if (activeDirHandle) {
+      await importFiles(await readDirectoryHandles(activeDirHandle), currentPath, { convert: false });
+      await updateActiveFileHandle();
+      markdownDirty = false;
+      assetsDirty = false;
+      await renderSaveStatus();
+    } else if (activeFileHandle) {
+      const file = await activeFileHandle.getFile();
+      await importFiles([await encodeFile(file, file.name)], file.name, { convert: false });
+      markdownDirty = false;
+      assetsDirty = false;
+      await renderSaveStatus();
+    } else {
+      // File inputs and browser drops do not expose a reusable disk handle; in that case
+      // reload means re-reading theme CSS and re-rendering the current in-memory files.
+      state.assets = null;
+    }
+
+    previewThemeKey = "";
+    if (await convertNow()) {
+      showStatus(activeDirHandle || activeFileHandle ? "已重新加载文件和 CSS" : "已重新加载 CSS");
+    }
+  } catch (error) {
+    showStatus(error instanceof Error ? error.message : String(error), true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 /** 打开单个 Markdown 文件,保留句柄用于自动保存(单文件模式下无法读取同级图片)。 */
@@ -787,11 +833,11 @@ function syncSourceFromPreview(): void {
   }
 }
 
-async function convertNow(): Promise<void> {
+async function convertNow(): Promise<boolean> {
   const markdown = state.markdown.trim();
   if (!markdown) {
     showStatus("等待输入");
-    return;
+    return false;
   }
 
   const serial = ++convertSerial;
@@ -819,15 +865,17 @@ async function convertNow(): Promise<void> {
 
     const result = await response.json() as ConvertResponse;
     if (serial !== convertSerial) {
-      return;
+      return false;
     }
 
     state.result = result;
     state.assets = mergeAssets(result.assets, state.assets);
     renderResult();
     showStatus("已转换");
+    return true;
   } catch (error) {
     showStatus(error instanceof Error ? error.message : String(error), true);
+    return false;
   }
 }
 
@@ -1347,7 +1395,11 @@ function setSourceDragging(isDragging: boolean): void {
   sourcePane.classList.toggle("is-dragging", isDragging);
 }
 
-async function importFiles(files: EncodedFile[], preferredPath?: string): Promise<void> {
+async function importFiles(
+  files: EncodedFile[],
+  preferredPath?: string,
+  options: { convert?: boolean } = {}
+): Promise<void> {
   state.files = files;
   const markdownFiles = state.files.filter((file) => isMarkdownPath(file.path));
   // 选 article.md;否则取路径层数最浅(顶层)的 md,避免误选子目录(如 old/)中的文档
@@ -1368,7 +1420,9 @@ async function importFiles(files: EncodedFile[], preferredPath?: string): Promis
   state.assets = null;
   renderArticleSelect();
   renderMeta();
-  scheduleConvert(0);
+  if (options.convert !== false) {
+    scheduleConvert(0);
+  }
 }
 
 async function encodeFile(file: File, relativePath: string): Promise<EncodedFile> {
