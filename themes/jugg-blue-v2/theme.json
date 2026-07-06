@@ -1,0 +1,20 @@
+{
+  "contentMaxWidth": 680,
+  "fontFamily": "\"PingFang SC\", \"Hiragino Sans GB\", \"Noto Sans CJK SC\", \"Source Han Sans SC\", \"Microsoft YaHei\", \"Segoe UI\", Arial, sans-serif",
+  "imageMaxWidth": 680,
+  "codeLineWrap": true,
+  "longWordBreak": "break-word",
+  "headingPrefixes": {
+    "h4": "#",
+    "h5": ""
+  },
+  "callout": {
+    "radius": 8,
+    "types": {
+      "note": { "label": "说明", "icon": "i", "background": "#EDF7FF", "badge": "#3F8FBD", "iconColor": "#fff" },
+      "tip": { "label": "建议", "icon": "✓", "background": "#E4F6FA", "badge": "#0CB8D6", "iconColor": "#fff" },
+      "warning": { "label": "注意", "icon": "!", "background": "#FDF5E3", "badge": "#F3A12E", "iconColor": "#fff" },
+      "important": { "label": "重点", "icon": "!", "background": "#FCECEC", "badge": "#E65757", "iconColor": "#fff" }
+    }
+  }
+}
