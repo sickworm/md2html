@@ -6,7 +6,8 @@ export const lexiangAdapter: PlatformAdapter = {
     supportsDetails: false,
     supportsStyleTag: false,
     requiresInlineStyle: true,
-    allowsClassName: false
+    allowsClassName: false,
+    maxWidth: 825
   },
   adaptHtml(html) {
     return html;

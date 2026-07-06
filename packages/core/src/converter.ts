@@ -112,7 +112,7 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     imagesMissing: imageManifest.filter((image) => image.missing).length,
     warnings
   };
-  const articleHtml = `<article class="md2html-article">\n${adaptedBodyHtml}\n</article>`;
+  const articleHtml = `<article class="md2html-article" style="max-width:${adapter.capabilities.maxWidth}px">\n${adaptedBodyHtml}\n</article>`;
   const previewHtml = `<!doctype html>
 <html>
 <head>
@@ -120,7 +120,7 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
 <title>${escapeHtml(path.basename(options.inputFile))}</title>
 <style>${theme.css}</style>
 </head>
-<body>
+<body style="margin:0 30px">
 ${articleHtml}
 </body>
 </html>`;

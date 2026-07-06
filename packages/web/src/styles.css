@@ -696,7 +696,7 @@ body.is-resizing iframe {
 }
 
 #previewFrame {
-  width: min(100%, 820px);
+  width: min(100%, 890px);
   height: 100%;
   min-height: 560px;
   border: none;

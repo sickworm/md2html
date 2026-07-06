@@ -6,7 +6,8 @@ export const kmAdapter: PlatformAdapter = {
     supportsDetails: false,
     supportsStyleTag: false,
     requiresInlineStyle: true,
-    allowsClassName: false
+    allowsClassName: false,
+    maxWidth: 770
   },
   adaptHtml(html) {
     return html;

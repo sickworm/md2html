@@ -6,7 +6,8 @@ export const genericAdapter: PlatformAdapter = {
     supportsDetails: true,
     supportsStyleTag: true,
     requiresInlineStyle: false,
-    allowsClassName: true
+    allowsClassName: true,
+    maxWidth: 770
   },
   adaptHtml(html) {
     return html;

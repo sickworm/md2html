@@ -5,6 +5,8 @@ export interface PlatformCapabilities {
   supportsStyleTag: boolean;
   requiresInlineStyle: boolean;
   allowsClassName: boolean;
+  /** .md2html-article 内容区最大宽度 (px) */
+  maxWidth: number;
 }
 
 export interface PlatformAdapter {
