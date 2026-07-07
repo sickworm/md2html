@@ -22,7 +22,7 @@
 
 /* H1:放大字号、字重 700、收紧字距,2px 亮绿满宽下边框作「文章主标签签名」,与 H2 的 1px 淡边拉开层级 */
 .md2html-article h1 {
-  margin: 32px 0 18px;
+  margin: 56px 0 18px;
   padding-bottom: 12px;
   color: #0A1310;
   font-weight: 700;
@@ -64,7 +64,7 @@
   margin: 36px 0 10px;
   color: #232625;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.5;
 }
 
@@ -153,7 +153,7 @@
 }
 
 .md2html-article li {
-  margin: 8px 0;
+  margin: 4px 0;
   padding-left: 8px;
   color: #252933;
 }
@@ -163,11 +163,11 @@
   font-size: 0.94em;
 }
 
-/*.md2html-article ol > li::marker {
-  color: #0a6b4a;
-  font-size: 0.94em;
-  font-weight: 600;
-}*/
+.md2html-article ol > li::marker {
+  /*color: #0a6b4a;*/
+  /*font-size: 0.94em;*/
+  font-weight: 500;
+}
 
 /* 引用块:Callout info 卡片风格 — 全圆角、无图标、无左色条、淡蓝灰底 */
 .md2html-article blockquote {
@@ -411,6 +411,122 @@
 
 .md2html-toc-level-3 {
   margin-left: 12px;
+}
+
+/* ===== 图片角标链接(左上角上方,不遮挡图片) ===== */
+/* 四种样式由 theme.json 的 imageLinkStyle 控制: pill / tab / card / accent */
+
+/* 通用 wrapper:为角标链接腾出上方空间。display:table 缩 wrap 内容宽度 + margin auto 居中 */
+.md2html-img-link-w {
+  display: table;
+  position: relative;
+  padding-top: 28px;
+  line-height: 0;
+  margin: 24px auto;
+}
+
+/* card 专用 wrapper:边框包裹整体 */
+.md2html-img-link-card-w {
+  display: table;
+  border: 1px solid #d7e3dd;
+  border-radius: 6px;
+  overflow: hidden;
+  line-height: 0;
+  background: #fbfdfc;
+  margin: 24px auto;
+}
+
+/* 所有 wrapper 内的图片基础重置(特异性 0,1,1,与 .md2html-article img 相同但定义靠后,juice 会覆盖) */
+.md2html-img-link-w img,
+.md2html-img-link-card-w img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+/* ---- pill:紧贴上方,深翠绿实底药丸 ---- */
+/* 特异性 0,2,0 > .md2html-article a(0,1,1),确保 juice 内联后不被通用链接样式覆盖 */
+.md2html-img-link-w .md2html-img-link-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 4px 4px 0 0;
+  background: #0a6b4a;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.md2html-img-link-w .md2html-img-link-pill + img {
+  border-radius: 6px;
+}
+
+/* ---- tab:边框连通 Tab,链接与图片共享翠绿边框 ---- */
+.md2html-img-link-w .md2html-img-link-tab {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  padding: 5px 14px;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid #10B981;
+  background: #ffffff;
+  color: #0a6b4a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.md2html-img-link-w .md2html-img-link-tab + img {
+  border-radius: 0 6px 6px 6px;
+  border: 1px solid #10B981;
+}
+
+/* ---- card:一体化卡片,链接+图片被同一细边框包裹 ---- */
+.md2html-img-link-card-w .md2html-img-link-card {
+  display: block;
+  padding: 7px 16px 6px;
+  background: #fbfdfc;
+  color: #0a6b4a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.md2html-img-link-card-w .md2html-img-link-card + img {
+  border-radius: 0;
+}
+
+/* ---- accent:左侧绿条引出(复刻 H3 签名) ---- */
+.md2html-img-link-w .md2html-img-link-accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-block;
+  padding: 4px 0 6px 10px;
+  border-left: 3px solid #10B981;
+  background: transparent;
+  color: #0a6b4a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.md2html-img-link-w .md2html-img-link-accent + img {
+  border-radius: 0 6px 6px 6px;
 }
 
 /* 数据指标卡:白底细边框 + 亮绿大数字(对齐参考版)

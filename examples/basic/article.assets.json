@@ -1,12 +1,8 @@
 {
   "images": {
-    "001": {
+    "res/sample.png": {
       "source": "res/sample.png",
       "width": 260
-    },
-    "002": {
-      "source": "res/sample.png",
-      "width": 240
     }
   }
 }

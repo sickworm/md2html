@@ -11,6 +11,10 @@ interface EncodedFile {
 
 interface ArticleAssets {
   images: Record<string, { source: string; width?: number }>;
+  /** Per-platform URL replacement map. */
+  urlReplacements?: Record<string, Record<string, string>>;
+  /** Per-platform image replacement map. Key is outputRelativePath (e.g. res/001.png). */
+  imageReplacements?: Record<string, Record<string, string>>;
 }
 
 interface ImageManifestItem {
@@ -39,6 +43,7 @@ interface ConvertResponse {
   inlineHtml: string;
   assets: ArticleAssets;
   imageManifest: ImageManifestItem[];
+  externalUrls: string[];
   report: {
     warnings: ConversionWarning[];
     imagesCopied: number;
@@ -214,8 +219,22 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
           <button class="tool-button wide" id="exportHtml" type="button"><i data-lucide="folder-down"></i><span>导出 HTML 到 Downloads</span></button>
           <button class="tool-button wide" id="exportAssets" type="button"><i data-lucide="download"></i><span>导出 article.assets.json</span></button>
         </div>
-        <div class="image-list" id="imageList"></div>
-        <div class="warnings" id="warnings"></div>
+        <div class="output-scroll">
+          <div class="image-list" id="imageList"></div>
+          <div class="url-replacements" id="urlReplacements" hidden>
+            <div class="url-replacements-head">
+              <h3>URL 替换</h3>
+              <span class="url-replacement-count" id="urlReplacementCount"></span>
+            </div>
+            <div id="urlReplacementList"></div>
+            <button class="tool-button wide" id="addUrlReplacement" type="button">+ 添加替换</button>
+            <div class="detected-urls" id="detectedUrls">
+              <h4>检测到的外链（点击添加）</h4>
+              <div id="detectedUrlList"></div>
+            </div>
+          </div>
+          <div class="warnings" id="warnings"></div>
+        </div>
       </aside>
     </section>
     <div class="shortcut-overlay" id="shortcutOverlay" hidden>
@@ -251,6 +270,7 @@ document.documentElement.dataset.theme = state.uiTheme;
 const markdownInput = getElement<HTMLTextAreaElement>("markdownInput");
 const markdownHighlight = getElement<HTMLElement>("markdownHighlight");
 const markdownMirror = getElement("markdownMirror");
+const markdownEditor = markdownInput.closest<HTMLElement>(".markdown-editor")!;
 const markdownFileInput = getElement<HTMLInputElement>("markdownFileInput");
 const folderInput = getElement<HTMLInputElement>("folderInput");
 const articleFileSelect = getElement<HTMLSelectElement>("articleFileSelect");
@@ -272,6 +292,7 @@ getElement("copyInline").addEventListener("click", copyInlineHtml);
 getElement("copyRich").addEventListener("click", copyRichText);
 getElement("exportAssets").addEventListener("click", exportAssets);
 getElement("exportHtml").addEventListener("click", () => void exportHtml());
+getElement("addUrlReplacement").addEventListener("click", addUrlReplacement);
 getElement("reloadPreview").addEventListener("click", () => void reloadPreview());
 getElement("uiThemeButton").addEventListener("click", toggleUiTheme);
 getElement("toggleSourcePane").addEventListener("click", toggleSourcePane);
@@ -333,7 +354,7 @@ folderInput.addEventListener("change", async () => {
 
 articleFileSelect.addEventListener("change", async () => {
   selectArticleFile(articleFileSelect.value);
-  state.assets = null;
+  state.assets = restoreAssetsFromFiles(articleFileSelect.value);
   assetsDirty = false;
   renderMeta();
   await updateActiveFileHandle();
@@ -413,7 +434,7 @@ async function reloadPreview(): Promise<void> {
     } else {
       // File inputs and browser drops do not expose a reusable disk handle; in that case
       // reload means re-reading theme CSS and re-rendering the current in-memory files.
-      state.assets = null;
+      state.assets = restoreAssetsFromFiles(state.inputFilePath);
     }
 
     previewThemeKey = "";
@@ -639,6 +660,31 @@ async function writeAssetsFile(
   const writable = await handle.createWritable();
   await writable.write(JSON.stringify(assets, null, 2));
   await writable.close();
+}
+
+/** 从已导入的文件列表中查找对应的 .assets.json 并恢复 URL 替换与图片宽度配置。 */
+function restoreAssetsFromFiles(markdownPath: string): ArticleAssets | null {
+  const assetsPath = markdownToAssetsPath(markdownPath);
+  const file = state.files.find((f) => f.path === assetsPath);
+  if (!file) return null;
+  try {
+    const json = decodeBase64(file.contentBase64);
+    const parsed = JSON.parse(json);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.images && typeof parsed.images === "object") {
+      return parsed as ArticleAssets;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function markdownToAssetsPath(markdownPath: string): string {
+  const normalized = markdownPath.replace(/\\/g, "/");
+  const slash = normalized.lastIndexOf("/");
+  const dot = normalized.lastIndexOf(".");
+  const base = dot > slash ? normalized.slice(0, dot) : normalized;
+  return `${base}.assets.json`;
 }
 
 async function renderSaveStatus(): Promise<void> {
@@ -983,13 +1029,31 @@ function scheduleHighlight(): void {
 /** 重建高亮叠加层内容、更新 mirror 并同步滚动位置。 */
 function renderHighlight(): void {
   markdownHighlight.innerHTML = highlightMarkdown(markdownInput.value);
+  // 重置 padding 以测量真实内容高度
+  markdownHighlight.style.paddingBottom = "";
   updateMirror();
+  updateScrollbarWidth();
+  // 确保高亮层的 scrollHeight >= textarea，防止滚动到底时被浏览器 clamp 导致错位
+  const diff = markdownInput.scrollHeight - markdownHighlight.scrollHeight;
+  if (diff > 0) {
+    const basePadding = 12; // 与 CSS 中的 padding 保持一致
+    markdownHighlight.style.paddingBottom = `${basePadding + diff}px`;
+  }
   syncHighlightScroll();
 }
 
 function syncHighlightScroll(): void {
   markdownHighlight.scrollTop = markdownInput.scrollTop;
   markdownHighlight.scrollLeft = markdownInput.scrollLeft;
+}
+
+/** 测量 textarea 原生滚动条宽度，更新 CSS 变量使高亮层与文本正确对齐。 */
+function updateScrollbarWidth(): void {
+  const scrollbarWidth = markdownInput.offsetWidth - markdownInput.clientWidth;
+  markdownInput.parentElement!.style.setProperty(
+    "--markdown-scrollbar-width",
+    `${scrollbarWidth}px`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -1247,6 +1311,7 @@ function renderResult(): void {
   renderPreviewShell();
   renderMeta();
   renderImages();
+  renderUrlReplacements();
   renderWarnings();
 }
 
@@ -1367,12 +1432,15 @@ function renderImages(): void {
   }
 
   imageList.innerHTML = localImages.map((image) => {
-    const width = state.assets?.images[image.id]?.width ?? image.displayWidth;
+    // 用源文件名(image.source)查找 assets.images 中配置的宽度,而非 manifest ID("001")
+    const width = state.assets?.images[image.source]?.width ?? image.displayWidth;
     const previewSrc = image.missing
       ? ""
       : `${result.imageBaseUrl}${image.outputRelativePath}`;
+    const platformReplacements = state.assets?.imageReplacements?.[state.platform] ?? {};
+    const replacementUrl = platformReplacements[image.outputRelativePath] ?? "";
     return `
-      <article class="image-item" data-image-id="${escapeAttr(image.id)}">
+      <article class="image-item" data-image-source="${escapeAttr(image.source)}" data-output-path="${escapeAttr(image.outputRelativePath)}">
         <div class="thumb">
           ${previewSrc ? `<img src="${escapeAttr(previewSrc)}" alt="${escapeAttr(image.alt ?? image.source)}" />` : `<i data-lucide="image-off"></i>`}
         </div>
@@ -1386,6 +1454,9 @@ function renderImages(): void {
             <input type="number" min="1" max="2000" step="1" value="${width}" ${image.missing ? "disabled" : ""} />
             <span>px</span>
           </div>
+          <div class="image-replacement">
+            <input class="image-replacement-url" type="text" value="${escapeAttr(replacementUrl)}" placeholder="替换图片 URL（${escapeHtml(state.platform)} 平台）" spellcheck="false" ${image.missing ? "disabled" : ""} />
+          </div>
         </div>
       </article>
     `;
@@ -1393,18 +1464,19 @@ function renderImages(): void {
 
   createIcons({ icons });
   imageList.querySelectorAll<HTMLElement>(".image-item").forEach((item) => {
-    const id = item.dataset.imageId;
+    const source = item.dataset.imageSource;
     const range = item.querySelector<HTMLInputElement>("input[type='range']");
     const number = item.querySelector<HTMLInputElement>("input[type='number']");
-    if (!id || !range || !number) {
+    if (!source || !range || !number) {
       return;
     }
 
     const updateWidth = (value: string): void => {
       const width = Math.max(1, Math.round(Number(value) || 1));
       state.assets ??= structuredClone(result.assets);
-      state.assets.images[id] = {
-        ...state.assets.images[id],
+      // 用源文件名作为 key 存储,与 .assets.json 中的 images key 保持一致
+      state.assets.images[source] = {
+        ...state.assets.images[source],
         width
       };
       range.value = String(width);
@@ -1416,7 +1488,174 @@ function renderImages(): void {
 
     range.addEventListener("input", () => updateWidth(range.value));
     number.addEventListener("change", () => updateWidth(number.value));
+
+    // 图片替换 URL 输入
+    const urlInput = item.querySelector<HTMLInputElement>(".image-replacement-url");
+    if (urlInput && item.dataset.outputPath) {
+      const outputPath = item.dataset.outputPath;
+      urlInput.addEventListener("input", () => {
+        handleImageReplacementChange(outputPath, urlInput.value);
+      });
+    }
   });
+}
+
+function renderUrlReplacements(): void {
+  const result = state.result;
+  const section = getElement("urlReplacements");
+
+  if (!result) {
+    section.hidden = true;
+    return;
+  }
+
+  const platformMap = state.assets?.urlReplacements?.[state.platform] ?? {};
+  const entries = Object.entries(platformMap);
+  const list = getElement("urlReplacementList");
+  const count = getElement("urlReplacementCount");
+
+  section.hidden = false;
+  count.textContent = entries.length > 0 ? `${entries.length} 条` : "";
+
+  if (entries.length === 0) {
+    list.innerHTML = "";
+  } else {
+    list.innerHTML = entries.map(([from, to], index) => `
+      <div class="url-replacement-item" data-index="${index}">
+        <input class="url-from" type="text" value="${escapeAttr(from)}" placeholder="原始 URL 前缀" spellcheck="false" />
+        <i data-lucide="arrow-right" class="url-arrow"></i>
+        <input class="url-to" type="text" value="${escapeAttr(to)}" placeholder="替换后 URL" spellcheck="false" />
+        <button class="icon-button" data-action="delete-url" data-index="${index}" type="button" title="删除"><i data-lucide="x"></i></button>
+      </div>
+    `).join("");
+    createIcons({ icons });
+  }
+
+  // 外链检测建议
+  const detectedUrls = (result.externalUrls ?? []).filter((url) => !(url in platformMap));
+  const detectedSection = getElement("detectedUrls");
+  const detectedList = getElement("detectedUrlList");
+
+  if (detectedUrls.length === 0) {
+    detectedSection.hidden = true;
+  } else {
+    detectedSection.hidden = false;
+    detectedList.innerHTML = detectedUrls.map((url) => `
+      <div class="detected-url-item">
+        <span class="detected-url" title="${escapeAttr(url)}">${escapeHtml(url)}</span>
+        <button class="icon-button add-detected-url" data-url="${escapeAttr(url)}" type="button" title="添加替换"><i data-lucide="plus"></i></button>
+      </div>
+    `).join("");
+    createIcons({ icons });
+  }
+
+  // 事件绑定
+  bindUrlReplacementEvents();
+}
+
+function bindUrlReplacementEvents(): void {
+  const list = getElement("urlReplacementList");
+
+  // from/to 输入框变更 (input 实时同步，保证删除时拿到最新 DOM 值)
+  list.querySelectorAll<HTMLInputElement>(".url-from, .url-to").forEach((input) => {
+    input.addEventListener("input", () => handleUrlReplacementChange());
+  });
+
+  // 删除按钮：先同步 DOM 再按 index 删除
+  list.querySelectorAll<HTMLButtonElement>("[data-action='delete-url']").forEach((button) => {
+    button.addEventListener("click", () => {
+      const index = button.dataset.index;
+      if (index === undefined) return;
+      deleteUrlReplacement(Number(index));
+    });
+  });
+
+  // 从检测列表添加
+  getElement("detectedUrlList").querySelectorAll<HTMLButtonElement>(".add-detected-url").forEach((button) => {
+    button.addEventListener("click", () => {
+      const url = button.dataset.url;
+      if (!url) return;
+      addReplacementFromDetected(url);
+    });
+  });
+}
+
+function collectUrlReplacementsFromDom(): Record<string, string> {
+  const items = getElement("urlReplacementList").querySelectorAll<HTMLElement>(".url-replacement-item");
+  const map: Record<string, string> = {};
+  items.forEach((item) => {
+    const from = (item.querySelector<HTMLInputElement>(".url-from")?.value ?? "").trim();
+    const to = (item.querySelector<HTMLInputElement>(".url-to")?.value ?? "").trim();
+    if (from.length > 0) {
+      map[from] = to;
+    }
+  });
+  return map;
+}
+
+function handleUrlReplacementChange(): void {
+  state.assets ??= { images: {} };
+  state.assets.urlReplacements ??= {};
+  state.assets.urlReplacements[state.platform] = collectUrlReplacementsFromDom();
+  assetsDirty = true;
+  scheduleConvert();
+  scheduleSave();
+}
+
+function handleImageReplacementChange(outputPath: string, url: string): void {
+  state.assets ??= { images: {} };
+  state.assets.imageReplacements ??= {};
+  state.assets.imageReplacements[state.platform] ??= {};
+  const trimmed = url.trim();
+  if (trimmed.length > 0) {
+    state.assets.imageReplacements[state.platform][outputPath] = trimmed;
+  } else {
+    delete state.assets.imageReplacements[state.platform][outputPath];
+  }
+  assetsDirty = true;
+  scheduleConvert();
+  scheduleSave();
+}
+
+function addUrlReplacement(): void {
+  state.assets ??= { images: {} };
+  state.assets.urlReplacements ??= {};
+  state.assets.urlReplacements[state.platform] ??= {};
+  state.assets.urlReplacements[state.platform][""] = "";
+  assetsDirty = true;
+  renderUrlReplacements();
+  // 聚焦新空行的 from 输入框
+  const firstInput = getElement("urlReplacementList").querySelector<HTMLInputElement>(".url-replacement-item:last-child .url-from");
+  firstInput?.focus();
+}
+
+function deleteUrlReplacement(index: number): void {
+  // 先同步 DOM 最新值到 state，避免删除时拿到过期的 key
+  handleUrlReplacementChange();
+  const platformMap = state.assets?.urlReplacements?.[state.platform];
+  if (!platformMap) return;
+  const keys = Object.keys(platformMap);
+  if (index < 0 || index >= keys.length) return;
+  delete platformMap[keys[index]];
+  assetsDirty = true;
+  renderUrlReplacements();
+  scheduleConvert();
+  scheduleSave();
+}
+
+function addReplacementFromDetected(url: string): void {
+  state.assets ??= { images: {} };
+  state.assets.urlReplacements ??= {};
+  state.assets.urlReplacements[state.platform] ??= {};
+  state.assets.urlReplacements[state.platform][url] = "";
+  assetsDirty = true;
+  renderUrlReplacements();
+  // 聚焦新添加的 to 输入框
+  const item = getElement("urlReplacementList").querySelector<HTMLElement>(`.url-replacement-item:last-child`);
+  const toInput = item?.querySelector<HTMLInputElement>(".url-to");
+  toInput?.focus();
+  scheduleConvert();
+  scheduleSave();
 }
 
 function renderWarnings(): void {
@@ -1608,7 +1847,19 @@ function mergeAssets(nextAssets: ArticleAssets, previousAssets: ArticleAssets | 
         ...image,
         width: previousAssets.images[id]?.width ?? image.width
       }
-    ]))
+    ])),
+    // urlReplacements 由用户手动维护，始终保留已有数据
+    urlReplacements: previousAssets.urlReplacements
+      ? structuredClone(previousAssets.urlReplacements)
+      : nextAssets.urlReplacements
+        ? structuredClone(nextAssets.urlReplacements)
+        : undefined,
+    // imageReplacements 由用户手动维护，始终保留已有数据
+    imageReplacements: previousAssets.imageReplacements
+      ? structuredClone(previousAssets.imageReplacements)
+      : nextAssets.imageReplacements
+        ? structuredClone(nextAssets.imageReplacements)
+        : undefined
   };
 }
 
@@ -1755,7 +2006,7 @@ async function importFiles(
   }
 
   selectArticleFile(selected.path);
-  state.assets = null;
+  state.assets = restoreAssetsFromFiles(selected.path);
   renderArticleSelect();
   renderMeta();
   if (options.convert !== false) {
@@ -1917,7 +2168,10 @@ function initResizers(): void {
     resizer.addEventListener("mousedown", startResize);
   });
   applyPaneWidths();
-  window.addEventListener("resize", () => applyPaneWidths());
+  window.addEventListener("resize", () => {
+    applyPaneWidths();
+    updateScrollbarWidth();
+  });
 }
 
 function applyPaneWidths(): void {
@@ -1995,6 +2249,7 @@ function endResize(): void {
   window.removeEventListener("mousemove", onResizeMove);
   window.removeEventListener("mouseup", endResize);
   persistPaneWidths();
+  updateScrollbarWidth();
 }
 
 function persistPaneWidths(): void {

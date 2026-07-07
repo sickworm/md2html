@@ -93,6 +93,7 @@ app.post("/api/convert", async (req, res, next) => {
       inlineHtml: result.inlineHtml,
       assets: result.assets,
       imageManifest: result.imageManifest,
+      externalUrls: result.externalUrls,
       report: result.report
     });
   } catch (error) {

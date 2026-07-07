@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>图片上方超链接样式 — jugg-clean-v4 主题</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #eaeaea;
+    color: #252933;
+    line-height: 1.75;
+    padding: 40px 24px 80px;
+  }
+
+  .preview { max-width: 860px; margin: 0 auto; }
+
+  .preview h1 {
+    font-size: 28px; font-weight: 700; color: #0A1310;
+    margin-bottom: 4px; letter-spacing: -0.02em;
+  }
+  .preview > .subtitle { color: #6b7c74; font-size: 15px; margin-bottom: 8px; }
+  .preview > .note {
+    font-size: 13px; color: #A0AEC0;
+    padding: 10px 16px; background: #F3F4F6; border-radius: 6px;
+    margin-bottom: 40px; line-height: 1.6;
+  }
+  .preview > .note code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9em; background: #e5e7eb; padding: 1px 5px; border-radius: 3px; color: #344054;
+  }
+  .preview > .note .ok { color: #0a6b4a; font-weight: 600; }
+  .preview > .note .warn { color: #d97706; font-weight: 600; }
+
+  /* ===== 变体区块 ===== */
+  .variant { margin-bottom: 56px; }
+  .variant-head { margin-bottom: 16px; }
+  .variant-head h2 {
+    font-size: 17px; font-weight: 700; color: #171A19; margin-bottom: 4px;
+  }
+  .variant-head .desc {
+    font-size: 14px; color: #6b7c74; margin-bottom: 6px;
+  }
+  .variant-head .meta {
+    font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+  }
+  .variant-head .meta .tag {
+    display: inline-block; padding: 2px 8px; border-radius: 3px; margin-right: 6px;
+  }
+  .tag-struct { background: #EDF7FF; color: #3F8FBD; }
+  .tag-juice  { background: #E3F6EE; color: #0a6b4a; }
+
+  /* ===== 共享图片底图(深色看板) ===== */
+  .dash {
+    display: block;
+    width: 640px; height: 300px;
+    background: linear-gradient(160deg, #0f1724 0%, #1a2332 50%, #141e2b 100%);
+    border-radius: 6px;
+  }
+  .dash .bars {
+    display: flex; align-items: flex-end; gap: 10px;
+    padding: 40px 32px; height: 100%;
+  }
+  .dash .bar {
+    flex: 1; border-radius: 3px 3px 0 0; min-height: 16px;
+    background: rgba(16, 185, 129, 0.22);
+  }
+
+  /* 浅色版 */
+  .dash-light {
+    display: block;
+    width: 640px; height: 300px;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+  }
+  .dash-light .bars {
+    display: flex; align-items: flex-end; gap: 10px;
+    padding: 40px 32px; height: 100%;
+  }
+  .dash-light .bar {
+    flex: 1; border-radius: 3px 3px 0 0; min-height: 16px;
+    background: #d4f0e4;
+  }
+
+  /* ===== 场景行 ===== */
+  .scene-row {
+    display: flex; flex-wrap: wrap; gap: 20px 16px; align-items: flex-start;
+  }
+  .scene-row + .scene-row { margin-top: 16px; }
+
+  /* =================================================================
+     变体 1: 紧贴上方 — 无间距，标签底边与图片顶边重合
+     结构: <a> + <img> 两个独立元素，或 wrapper 内 absolute top:0
+     juice: ✅ 最简单，绝对定位在 wrapper 的 padding-top 区域
+     ================================================================= */
+  .v1-wrap {
+    /* 关键: 用 padding-top 为链接腾出空间; overflow:visible 保证不裁剪 */
+    display: inline-block;
+    position: relative;
+    padding-top: 28px;
+    line-height: 0;
+  }
+  .v1-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 6px;
+  }
+  .v1-link {
+    position: absolute;
+    top: 0; left: 0;
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 4px 4px 0 0;
+    background: #0a6b4a;
+    color: #ffffff;
+    font-size: 13px; font-weight: 600; line-height: 1.5;
+    text-decoration: none; letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  /* =================================================================
+     变体 2: 微间距 — 6px 间距，轻量呼吸感
+     ================================================================= */
+  .v2-wrap {
+    display: inline-block;
+    position: relative;
+    padding-top: 32px;
+    line-height: 0;
+  }
+  .v2-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 6px;
+  }
+  .v2-link {
+    position: absolute;
+    top: 0; left: 0;
+    display: inline-block;
+    padding: 5px 13px;
+    border-radius: 4px;
+    background: #10B981;
+    color: #ffffff;
+    font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-decoration: none; letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  /* =================================================================
+     变体 3: 边框 Tab — 链接如标签页，与图片共用同色边框
+     结构: wrapper 统一 border，链接放在 border 上方
+     ================================================================= */
+  .v3-wrap {
+    display: inline-block;
+    position: relative;
+    padding-top: 28px;
+    line-height: 0;
+    /* 外层不加 border，由内部元素各自处理 */
+  }
+  .v3-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 0 6px 6px 6px;
+    border: 1px solid #10B981;
+  }
+  .v3-link {
+    position: absolute;
+    top: 0; left: 0;
+    display: inline-block;
+    padding: 5px 14px;
+    border-radius: 6px 6px 0 0;
+    border: 1px solid #10B981;
+    border-bottom: 1px solid #ffffff; /* 遮盖图片上边框，形成连通感 */
+    background: #ffffff;
+    color: #0a6b4a;
+    font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-decoration: none; letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  /* 深色图片场景: border-bottom 用图片底色遮盖 */
+  .v3-link.on-dark {
+    border-bottom-color: #0f1724;
+  }
+
+  /* =================================================================
+     变体 4: 一体化卡片 — 图片带完整边框，链接缩进于边框内
+     结构: wrapper 统一边框包裹链接+图片
+     ================================================================= */
+  .v4-wrap {
+    display: inline-block;
+    border: 1px solid #d7e3dd;
+    border-radius: 6px;
+    overflow: hidden;
+    line-height: 0;
+    background: #fbfdfc;
+  }
+  .v4-link {
+    display: block;
+    padding: 7px 16px 6px;
+    background: #fbfdfc;
+    color: #0a6b4a;
+    font-size: 13px; font-weight: 600; line-height: 1.5;
+    text-decoration: none; letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    border-bottom: 1px solid #E2E8F0;
+  }
+  .v4-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 0;
+  }
+
+  /* =================================================================
+     变体 5: 下划线引出 — 链接仅文字+下划线，浮于图片上方
+     克制如正文链接，绿色下划线签名
+     ================================================================= */
+  .v5-wrap {
+    display: inline-block;
+    position: relative;
+    padding-top: 28px;
+    line-height: 0;
+  }
+  .v5-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 6px;
+  }
+  .v5-link {
+    position: absolute;
+    top: 0; left: 0;
+    display: inline-block;
+    padding: 3px 2px 5px;
+    background: transparent;
+    color: #0a6b4a;
+    font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-decoration-line: underline;
+    text-decoration-color: #10B981;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+    letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+
+  /* =================================================================
+     变体 6(额外): 左侧绿条引出 — 复刻 H3，绿条从链接延伸到图片
+     ================================================================= */
+  .v6-wrap {
+    display: inline-block;
+    position: relative;
+    padding-top: 26px;
+    padding-left: 0;
+    line-height: 0;
+  }
+  .v6-wrap img {
+    display: block; max-width: 100%; height: auto;
+    border-radius: 0 6px 6px 6px;
+  }
+  .v6-link {
+    position: absolute;
+    top: 0; left: 0;
+    display: inline-block;
+    padding: 4px 0 4px 10px;
+    border-left: 3px solid #10B981;
+    background: transparent;
+    color: #0a6b4a;
+    font-size: 13px; font-weight: 600; line-height: 1.4;
+    text-decoration: none; letter-spacing: 0.02em;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+</style>
+</head>
+<body>
+
+<div class="preview">
+  <h1>图片上方超链接样式</h1>
+  <p class="subtitle">链接在图片外部 · 不遮挡内容 · jugg-clean-v4 主题</p>
+  <p class="note">
+    <span class="ok">✅</span> 每个变体标注了结构和 juice 内联兼容性。<br>
+    <span class="warn">⚡</span> 变体 1/2/5/6 用 <code>position:relative</code> wrapper + <code>padding-top</code> + <code>position:absolute</code> 链接，链接在 wrapper 内部但图片上方。<br>
+    <span class="warn">⚡</span> 变体 3/4 用边框连接，注意深色图场景 <code>border-bottom-color</code> 需匹配图片底色。<br>
+    深色/浅色双场景展示。
+  </p>
+
+  <!-- ================================================================
+       变体 1: 紧贴上方
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 1 · 紧贴上方</h2>
+      <p class="desc">标签底边与图片顶边重合。深翠绿实底 + 上圆角，像从图片"长出来"。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper + padding-top + absolute</span>
+        <span class="tag tag-juice">juice ✅</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <!-- 深色图 -->
+      <div class="v1-wrap">
+        <a class="v1-link" href="#">jugg-clean-v4</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <!-- 浅色图 -->
+      <div class="v1-wrap">
+        <a class="v1-link" href="#">jugg-clean-v4</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       变体 2: 微间距
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 2 · 微间距（6px）</h2>
+      <p class="desc">亮绿 Tag 与图片顶部保持 6px 间距。有呼吸感，适合"来源"类中性信息。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper + padding-top + absolute</span>
+        <span class="tag tag-juice">juice ✅</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <div class="v2-wrap">
+        <a class="v2-link" href="#">查看原图</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <div class="v2-wrap">
+        <a class="v2-link" href="#">查看原图</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       变体 3: 边框 Tab
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 3 · 边框 Tab</h2>
+      <p class="desc">链接与图片共享翠绿边框，标签像 Tab 页签连通到图片。白底 + 绿框 + 绿字。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper + padding-top + absolute</span>
+        <span class="tag tag-juice">juice ✅</span>
+        <span class="tag" style="background:#FDF5E3;color:#d97706">⚠️ 深色图需调 border-bottom-color 匹配底色</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <div class="v3-wrap">
+        <a class="v3-link on-dark" href="#">系列: Jugg 架构演进</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <div class="v3-wrap">
+        <a class="v3-link" href="#">系列: Jugg 架构演进</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       变体 4: 一体化卡片
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 4 · 一体化卡片</h2>
+      <p class="desc">链接 + 图片被同一细边框包裹成卡片。链接有淡灰底，底部有分隔线，像图注栏。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper border 包裹 link + img</span>
+        <span class="tag tag-juice">juice ✅</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <div class="v4-wrap">
+        <a class="v4-link" href="#">Jugg 系列: Android 架构演进 · 第 3 篇</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <div class="v4-wrap">
+        <a class="v4-link" href="#">Jugg 系列: Android 架构演进 · 第 3 篇</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       变体 5: 下划线引出
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 5 · 下划线引出</h2>
+      <p class="desc">最克制。透明底 + 深绿文字 + 2px 亮绿下划线，与正文链接风格一致。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper + padding-top + absolute</span>
+        <span class="tag tag-juice">juice ✅</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <div class="v5-wrap">
+        <a class="v5-link" href="#">数据来源: Jugg Dashboard</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <div class="v5-wrap">
+        <a class="v5-link" href="#">数据来源: Jugg Dashboard</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================
+       变体 6: 左侧绿条引出
+       ================================================================ -->
+  <div class="variant">
+    <div class="variant-head">
+      <h2>变体 6 · 左侧绿条引出</h2>
+      <p class="desc">3px 亮绿左边框（复刻 H3 签名），透明底，文字绿条与图片左上角对齐。</p>
+      <p class="meta">
+        <span class="tag tag-struct">wrapper + padding-top + absolute</span>
+        <span class="tag tag-juice">juice ✅</span>
+      </p>
+    </div>
+    <div class="scene-row">
+      <div class="v6-wrap">
+        <a class="v6-link" href="#">系列: Jugg 架构演进</a>
+        <div class="dash"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+      <div class="v6-wrap">
+        <a class="v6-link" href="#">系列: Jugg 架构演进</a>
+        <div class="dash-light"><div class="bars">
+          <div class="bar" style="height:42%"></div><div class="bar" style="height:68%"></div>
+          <div class="bar" style="height:35%"></div><div class="bar" style="height:82%"></div>
+          <div class="bar" style="height:55%"></div><div class="bar" style="height:91%"></div>
+          <div class="bar" style="height:28%"></div><div class="bar" style="height:73%"></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

@@ -31,6 +31,8 @@ import {
 import { rehypeSanitizePlatformHtml } from "./markdown/rehype-sanitize-platform-html.js";
 import { rehypeToc } from "./markdown/rehype-toc.js";
 import { remarkCallouts } from "./markdown/remark-callouts.js";
+import { rehypeImageLinks } from "./markdown/rehype-image-links.js";
+import { rehypeExternalLinks } from "./markdown/rehype-external-links.js";
 import { writeOutput } from "./output/write-output.js";
 import { getPlatformAdapter } from "./platforms/index.js";
 import { inlineStyles } from "./theme/inline-styles.js";
@@ -55,7 +57,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     imageManifest: undefined,
     highlight: false,
     callout: theme.config.callout,
-    headingPrefixes: theme.config.headingPrefixes
+    headingPrefixes: theme.config.headingPrefixes,
+    imageLinkStyle: theme.config.imageLinkStyle
   });
 
   const imageManifest = await createImageManifest({
@@ -85,23 +88,34 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     highlight: true,
     callout: theme.config.callout,
     headingPrefixes: theme.config.headingPrefixes,
+    imageLinkStyle: theme.config.imageLinkStyle,
     longWordMinLength
   });
   const adaptedBodyHtml = adapter.adaptHtml(bodyHtml, warnings);
+  const externalUrls = extractExternalUrls(bodyHtml);
+  const replacedBodyHtml = applyUrlReplacements(adaptedBodyHtml, assets.urlReplacements?.[platform]);
+  const finalBodyHtml = applyImageReplacements(replacedBodyHtml, assets.imageReplacements?.[platform]);
   if (options.strict && warnings.some((warning) => warning.code === "unsupported-html")) {
     throw new Error("Strict mode failed: unsafe or unsupported HTML was removed");
   }
+  // 使用源文件名作为 key,同名文件多次出现时追加序号后缀(N>=2)
+  const sourceCounts = new Map<string, number>();
   const resolvedAssets: ArticleAssets = {
     images: Object.fromEntries(
       imageManifest
         .filter((image) => !image.remote)
-        .map((image) => [
-          image.id,
-          {
-            source: image.source,
-            width: image.displayWidth
-          }
-        ])
+        .map((image) => {
+          const count = sourceCounts.get(image.source) ?? 0;
+          sourceCounts.set(image.source, count + 1);
+          const key = count > 0 ? `${image.source}#${count + 1}` : image.source;
+          return [
+            key,
+            {
+              source: image.source,
+              width: image.displayWidth
+            }
+          ];
+        })
     )
   };
   const report: ConversionReport = {
@@ -112,7 +126,7 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     imagesMissing: imageManifest.filter((image) => image.missing).length,
     warnings
   };
-  const articleHtml = `<article class="md2html-article" style="max-width:${adapter.capabilities.maxWidth}px">\n${adaptedBodyHtml}\n</article>`;
+  const articleHtml = `<article class="md2html-article" style="max-width:${adapter.capabilities.maxWidth}px">\n${finalBodyHtml}\n</article>`;
   const previewHtml = `<!doctype html>
 <html>
 <head>
@@ -140,6 +154,7 @@ ${articleHtml}
     inlineHtml: inlinedHtml,
     assets: resolvedAssets,
     imageManifest,
+    externalUrls,
     report,
     outputFiles
   };
@@ -156,6 +171,7 @@ async function renderMarkdownToHtml(
     highlight: boolean;
     callout?: CalloutConfig;
     headingPrefixes?: HeadingPrefixConfig;
+    imageLinkStyle?: import("./theme/theme-loader.js").ImageLinkStyle;
     longWordMinLength?: number;
   }
 ): Promise<string> {
@@ -165,8 +181,10 @@ async function renderMarkdownToHtml(
     .use(remarkCallouts, context.warnings, context.callout)
     .use(remarkRehype, { allowDangerousHtml: true })
     .use(rehypeRaw)
+    .use(rehypeExternalLinks)
     .use(rehypeSanitizePlatformHtml, context.warnings)
-    .use(rehypeNormalizeImages, context.imageRefs);
+    .use(rehypeNormalizeImages, context.imageRefs)
+    .use(rehypeImageLinks, context.imageLinkStyle);
 
   if (context.highlight) {
     // Shiki 输出内联颜色 style,juice 会原样保留,使公众号等平台也带语法高亮
@@ -203,4 +221,45 @@ function escapeHtml(value: string): string {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+/** 从 HTML 中扫描所有 https?:// 协议的 <a href> 链接，去重排序后返回。 */
+function extractExternalUrls(html: string): string[] {
+  const matches = html.matchAll(/<a[^>]+href="(https?:\/\/[^"]+)"/g);
+  return [...new Set([...matches].map((m) => m[1]))].sort();
+}
+
+/**
+ * 按 urlReplacements 映射对 <a href> 做精确匹配替换。
+ * 只替换 href 值与 from 完全相等的链接，不做子串/前缀匹配，
+ * 避免宽泛规则误伤不相关 URL 或多条规则互相干扰。
+ */
+function applyUrlReplacements(html: string, map?: Record<string, string>): string {
+  if (!map) return html;
+  let result = html;
+  for (const [from, to] of Object.entries(map)) {
+    if (from && to && from !== to) {
+      const escaped = escapeRegex(from);
+      const regex = new RegExp(`(<a\\b[^>]*?)href="${escaped}"`, "g");
+      result = result.replace(regex, `$1href="${to}"`);
+    }
+  }
+  return result;
+}
+
+/** 转义正则特殊字符，用于构建精确匹配 URL 的正则。 */
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** 按 imageReplacements 映射逐条对 HTML 中的图片路径做 String.replaceAll 字面替换。 */
+function applyImageReplacements(html: string, map?: Record<string, string>): string {
+  if (!map) return html;
+  let result = html;
+  for (const [from, to] of Object.entries(map)) {
+    if (from && to && from !== to) {
+      result = result.replaceAll(from, to);
+    }
+  }
+  return result;
 }

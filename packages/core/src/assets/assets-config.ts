@@ -95,6 +95,50 @@ function validateArticleAssetsConfig(value: unknown): void {
   for (const [id, entry] of Object.entries(images as Record<string, unknown>)) {
     validateArticleAssetImageEntry(entry, id);
   }
+
+  const urlReplacements = (value as { urlReplacements?: unknown }).urlReplacements;
+  if (urlReplacements !== undefined) {
+    validateUrlReplacements(urlReplacements);
+  }
+
+  const imageReplacements = (value as { imageReplacements?: unknown }).imageReplacements;
+  if (imageReplacements !== undefined) {
+    validateImageReplacements(imageReplacements);
+  }
+}
+
+function validateUrlReplacements(value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("urlReplacements must be an object of platform->map entries");
+  }
+
+  for (const [platform, map] of Object.entries(value as Record<string, unknown>)) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
+      throw new Error(`urlReplacements.${platform} must be an object of from->to string pairs`);
+    }
+    for (const [from, to] of Object.entries(map as Record<string, unknown>)) {
+      if (typeof from !== "string" || typeof to !== "string") {
+        throw new Error(`urlReplacements.${platform} entry "${String(from)}: ${String(to)}" must have string keys and values`);
+      }
+    }
+  }
+}
+
+function validateImageReplacements(value: unknown): void {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("imageReplacements must be an object of platform->map entries");
+  }
+
+  for (const [platform, map] of Object.entries(value as Record<string, unknown>)) {
+    if (!map || typeof map !== "object" || Array.isArray(map)) {
+      throw new Error(`imageReplacements.${platform} must be an object of from->to string pairs`);
+    }
+    for (const [from, to] of Object.entries(map as Record<string, unknown>)) {
+      if (typeof from !== "string" || typeof to !== "string") {
+        throw new Error(`imageReplacements.${platform} entry "${String(from)}: ${String(to)}" must have string keys and values`);
+      }
+    }
+  }
 }
 
 function validateArticleAssetImageEntry(entry: unknown, id: string): void {

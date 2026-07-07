@@ -216,3 +216,17 @@ node packages/cli/dist/index.js examples/style-demo/article.md --platform wechat
 - 不要改写 `../../Jugg.md` 下的文章草稿，除非用户明确要求。
 - 不要删除未跟踪素材或历史发布产物。
 - 调整主题时保留普通 Markdown 可读性，不把内容语义绑定到纯样式技巧上。
+
+## 改动后是否需要重启
+
+`md2html-web.command` 启动时会自动执行 `npm run build` 完整编译。之后修改代码：
+
+| 改动文件 | 生效方式 |
+|----------|----------|
+| `packages/web/src/main.ts` | 自动，Vite HMR（浏览器热更新） |
+| `packages/web/src/styles.css` | 自动，Vite HMR |
+| `packages/web/src/server.ts` | 需重启 `./md2html-web.command` |
+| `packages/core/src/*.ts` | 需重启 `./md2html-web.command`（`npm run build` 会编译） |
+| `themes/` 下的主题文件 | 需重启 `./md2html-web.command` |
+
+> **结论**：只改 Web UI 前端（main.ts、CSS）不需要重启。改后端（server.ts、core 包、主题）必须重启。

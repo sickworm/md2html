@@ -20,6 +20,9 @@ export interface CalloutConfig {
 
 export type HeadingPrefixConfig = Partial<Record<"h1" | "h2" | "h3" | "h4" | "h5" | "h6", string>>;
 
+/** 图片角标链接样式: pill(紧贴上方) | tab(边框Tab) | card(一体化卡片) | accent(左侧绿条) */
+export type ImageLinkStyle = "pill" | "tab" | "card" | "accent";
+
 export interface ThemeConfig {
   contentMaxWidth: number;
   fontFamily: string;
@@ -38,6 +41,8 @@ export interface ThemeConfig {
    */
   longWordMinLength?: number;
   headingPrefixes?: HeadingPrefixConfig;
+  /** 图片角标链接样式,不设置则不对图片添加角标链接 */
+  imageLinkStyle?: ImageLinkStyle;
   callout?: CalloutConfig;
 }
 
@@ -65,6 +70,16 @@ export async function loadTheme(theme = "jugg-clean-v4"): Promise<LoadedTheme> {
   const name = path.basename(directory);
   const css = await fs.readFile(path.join(directory, "theme.css"), "utf8");
   const config = await readThemeConfig(path.join(directory, "theme.json"));
+
+  // 校验 imageLinkStyle:仅允许 pill/tab/card/accent 或为空(不启用)
+  const validImageLinkStyles = ["pill", "tab", "card", "accent"];
+  if (config.imageLinkStyle !== undefined && !validImageLinkStyles.includes(config.imageLinkStyle)) {
+    console.warn(
+      `[theme] 无效的 imageLinkStyle "${config.imageLinkStyle}",已忽略。有效值: ${validImageLinkStyles.join(" / ")}`
+    );
+    config.imageLinkStyle = undefined;
+  }
+
   const mergedConfig: ThemeConfig = {
     ...defaultConfig,
     ...config

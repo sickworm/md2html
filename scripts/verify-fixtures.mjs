@@ -57,14 +57,15 @@ async function verifyBasicFixture() {
   assertIncludes(inlineHtml, "md2html-callout");
   assertIncludes(inlineHtml, "md2html-details-fallback");
   assertImageWidth(inlineHtml, "res/001.png", "260");
-  assertImageWidth(inlineHtml, "res/002.png", "240");
+  assertImageWidth(inlineHtml, "res/002.png", "260");
 
   const assets = JSON.parse(await fs.readFile("dist/basic/article.assets.json", "utf8"));
-  if (assets.images?.["001"]?.width !== 260) {
-    throw new Error(`Expected assets image 001 width to be 260, got ${assets.images?.["001"]?.width}`);
+  // 使用源文件名作为 key;同名文件多次出现时追加 #N 后缀
+  if (assets.images?.["res/sample.png"]?.width !== 260) {
+    throw new Error(`Expected assets image res/sample.png width to be 260, got ${assets.images?.["res/sample.png"]?.width}`);
   }
-  if (assets.images?.["002"]?.width !== 240) {
-    throw new Error(`Expected assets image 002 width to be 240, got ${assets.images?.["002"]?.width}`);
+  if (assets.images?.["res/sample.png#2"]?.width !== 260) {
+    throw new Error(`Expected assets image res/sample.png#2 width to be 260, got ${assets.images?.["res/sample.png#2"]?.width}`);
   }
 
   const report = JSON.parse(await fs.readFile("dist/basic/report.json", "utf8"));
@@ -117,7 +118,7 @@ async function verifyStyleDemoFixture() {
 
   const inlineHtml = await fs.readFile(path.join(outputDir, "article.inline.html"), "utf8");
   assertImageWidth(inlineHtml, "res/001.png", "420");
-  assertImageWidth(inlineHtml, "res/002.png", "240");
+  assertImageWidth(inlineHtml, "res/002.png", "420");
 
   const report = JSON.parse(await fs.readFile(path.join(outputDir, "report.json"), "utf8"));
   if (report.imagesCopied !== 2) {

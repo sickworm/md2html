@@ -30,5 +30,8 @@ echo "Opening $url"
 echo "Close this Terminal window or press Ctrl+C to stop the Web UI."
 echo
 
+echo "Building..."
+npm run build
+
 (sleep 2 && open "$url") &
 PORT="$port" npm run dev:web

@@ -51,7 +51,8 @@ export async function createImageManifest(options: CreateImageManifestOptions): 
     const ext = path.extname(ref.source) || ".png";
     const outputRelativePath = `res/${id}${ext}`;
     const outputFile = path.join(resDir, `${id}${ext}`);
-    const configured = options.assets.images[id];
+    // 按源文件名查找配置(图片尺寸绑定到文件名而非出现顺序)
+    const configured = options.assets.images[ref.source];
     let missing = false;
 
     try {

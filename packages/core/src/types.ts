@@ -12,6 +12,10 @@ export interface ConvertOptions {
 
 export interface ArticleAssets {
   images: Record<string, ArticleAssetImage>;
+  /** Per-platform URL replacement map. Applied via String.replaceAll after platform adaptation. */
+  urlReplacements?: Partial<Record<PlatformId, Record<string, string>>>;
+  /** Per-platform image replacement map. Replaces local image paths (e.g. res/001.png) with platform-specific URLs. */
+  imageReplacements?: Partial<Record<PlatformId, Record<string, string>>>;
 }
 
 export interface ArticleAssetImage {
@@ -60,6 +64,8 @@ export interface ConvertResult {
   inlineHtml: string;
   assets: ArticleAssets;
   imageManifest: ImageManifestItem[];
+  /** External URLs (https?://) found in the rendered HTML, for the UI to suggest replacements. */
+  externalUrls: string[];
   report: ConversionReport;
   outputFiles: {
     html: string;
