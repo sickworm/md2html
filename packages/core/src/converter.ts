@@ -16,6 +16,7 @@ import type {
   ImageManifestItem,
   PlatformId
 } from "./types.js";
+import type { Root } from "hast";
 import { loadArticleAssets, resolveAssetsConfigPath } from "./assets/assets-config.js";
 import { createImageManifest, type ImageRef } from "./assets/image-manifest.js";
 import { rehypeDetails } from "./markdown/rehype-details.js";
@@ -35,6 +36,7 @@ import { rehypeImageLinks } from "./markdown/rehype-image-links.js";
 import { rehypeExternalLinks } from "./markdown/rehype-external-links.js";
 import { writeOutput } from "./output/write-output.js";
 import { getPlatformAdapter } from "./platforms/index.js";
+import type { PlatformAdapter } from "./platforms/types.js";
 import { inlineStyles } from "./theme/inline-styles.js";
 import { loadTheme } from "./theme/theme-loader.js";
 import type { CalloutConfig, HeadingPrefixConfig } from "./theme/theme-loader.js";
@@ -89,7 +91,8 @@ export async function convertMarkdown(options: ConvertOptions): Promise<ConvertR
     callout: theme.config.callout,
     headingPrefixes: theme.config.headingPrefixes,
     imageLinkStyle: theme.config.imageLinkStyle,
-    longWordMinLength
+    longWordMinLength,
+    adapter
   });
   const adaptedBodyHtml = adapter.adaptHtml(bodyHtml, warnings);
   const externalUrls = extractExternalUrls(bodyHtml);
@@ -173,6 +176,7 @@ async function renderMarkdownToHtml(
     headingPrefixes?: HeadingPrefixConfig;
     imageLinkStyle?: import("./theme/theme-loader.js").ImageLinkStyle;
     longWordMinLength?: number;
+    adapter?: PlatformAdapter;
   }
 ): Promise<string> {
   const processor = unified()
@@ -208,11 +212,18 @@ async function renderMarkdownToHtml(
     .use(rehypeBreakLongWords, { minWordLength: context.longWordMinLength })
     .use(rehypeListContent)
     .use(rehypeHeadingPrefixes, context.headingPrefixes)
+    .use(rehypePlatformAdapt, context.adapter)
     .use(rehypeSourceLine)
     .use(rehypeStringify)
     .process(markdown);
 
   return String(file);
+}
+
+function rehypePlatformAdapt(adapter?: PlatformAdapter) {
+  return (tree: Root) => {
+    adapter?.adaptTree?.(tree);
+  };
 }
 
 function escapeHtml(value: string): string {

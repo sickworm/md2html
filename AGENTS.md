@@ -59,6 +59,20 @@ npm run verify:fixtures
 
 ## 已记录的重要变更
 
+### 2026-07-16 jugg-clean-v4 KM / 乐乎平台兼容
+
+- `PlatformAdapter` 新增可选 `adaptTree`，在 rehype 完成图片尺寸、标题前缀等通用转换后、HTML 序列化前执行平台 DOM 适配；平台差异放在 `packages/core/src/platforms/`，不通过字符串正则修改最终 HTML。
+- 乐乎会把 `display: table` 的图片角标容器扩成 `width: 100%`。`lexiangAdapter` 现在给图片卡片增加全宽居中外层，内层改为带实际 `displayWidth` 的 `inline-block`，图片使用 `width: 100%` 填充内层，避免边框撑满而图片贴左。
+- KM 会删除 callout 圆徽的 `position: absolute`、`display: inline-flex` 和 flex 居中属性。`kmAdapter` 改用 `display: block`、固定行高、文本居中和负边距保持悬挂效果；即使平台继续清理负边距，圆徽仍能保持 28px 圆形。
+- v4 的 H4 前缀改为真实 `#\u00a0`，让 KM / 乐乎平台自动目录显示为 `# 标题` 而不是 `#标题`；CSS `margin-right` 同步缩小，保持正文中的原有视觉间距。
+- 回归场景在 `scripts/verify-fixtures.mjs` 的 `verifyPlatformCompatibility`，覆盖 KM 圆徽、乐乎图片卡片宽度和 H4 前缀空格。
+- 验证入口：
+
+```bash
+npm run build
+npm run verify:fixtures
+```
+
 ### 2026-07-06 Web UI Markdown 光标插入偏移修复
 
 - Markdown 编辑区采用透明 `textarea` 叠加 `pre.markdown-highlight` 的结构；高亮层必须只改颜色，不改字体度量。`packages/web/src/styles.css` 已让 `markdown-highlight`、`markdown-mirror`、`#markdownInput` 统一 `font-weight: 400`、`font-style: normal`、`font-variant-ligatures: none`、换行规则和 `tab-size`。

@@ -19,6 +19,7 @@ await fs.mkdir(tmpDir, { recursive: true });
 
 await verifyBasicFixture();
 await verifyStyleDemoFixture();
+await verifyPlatformCompatibility();
 await verifyNonLocalImages();
 await verifyStrictMissingImageFailure();
 await verifyMissingExplicitAssetsConfigFailure();
@@ -127,6 +128,64 @@ async function verifyStyleDemoFixture() {
   if (report.imagesMissing !== 0) {
     throw new Error(`Expected style demo to have no missing images, got ${report.imagesMissing}`);
   }
+}
+
+async function verifyPlatformCompatibility() {
+  const fixtureDir = path.join(tmpDir, "platform-compatibility");
+  const kmOutputDir = path.resolve("dist/platform-compatibility-km");
+  const lexiangOutputDir = path.resolve("dist/platform-compatibility-lexiang");
+  await fs.rm(kmOutputDir, { recursive: true, force: true });
+  await fs.rm(lexiangOutputDir, { recursive: true, force: true });
+  await fs.mkdir(fixtureDir, { recursive: true });
+  await fs.copyFile("examples/basic/res/sample.png", path.join(fixtureDir, "sample.png"));
+  await fs.writeFile(
+    path.join(fixtureDir, "article.md"),
+    `#### 兼容标题
+
+> [!NOTE]
+> KM 圆徽兼容验证。
+
+<!-- image-link: 乐乎居中验证 -->
+<img src="./sample.png" width="320" alt="平台兼容图片">
+`,
+    "utf8"
+  );
+
+  await runCli([
+    path.join(fixtureDir, "article.md"),
+    "--platform",
+    "km",
+    "--theme",
+    "jugg-clean-v4",
+    "-o",
+    kmOutputDir
+  ]);
+  await runCli([
+    path.join(fixtureDir, "article.md"),
+    "--platform",
+    "lexiang",
+    "--theme",
+    "jugg-clean-v4",
+    "-o",
+    lexiangOutputDir
+  ]);
+
+  const kmHtml = await fs.readFile(path.join(kmOutputDir, "article.inline.html"), "utf8");
+  const kmBadge = extractOpeningTagByClass(kmHtml, "md2html-callout-badge");
+  assertMatches(kmBadge, /display:\s*block/i);
+  assertMatches(kmBadge, /line-height:\s*28px/i);
+  assertMatches(kmBadge, /text-align:\s*center/i);
+  assertNotMatches(kmBadge, /position:\s*absolute|display:\s*inline-flex/i);
+  assertHeadingPrefixSpace(kmHtml);
+
+  const lexiangHtml = await fs.readFile(path.join(lexiangOutputDir, "article.inline.html"), "utf8");
+  const lexiangCenter = extractOpeningTagByClass(lexiangHtml, "md2html-lexiang-image-center");
+  const lexiangCard = extractOpeningTagByClass(lexiangHtml, "md2html-img-link-card-w");
+  assertMatches(lexiangCenter, /text-align:\s*center/i);
+  assertMatches(lexiangCard, /display:\s*inline-block/i);
+  assertMatches(lexiangCard, /width:\s*320px/i);
+  assertMatches(lexiangCard, /max-width:\s*100%/i);
+  assertHeadingPrefixSpace(lexiangHtml);
 }
 
 async function verifyNonLocalImages() {
@@ -343,6 +402,35 @@ function assertNotIncludes(content, needle) {
   if (content.includes(needle)) {
     throw new Error(`Expected output to exclude: ${needle}`);
   }
+}
+
+function assertMatches(content, pattern) {
+  if (!pattern.test(content)) {
+    throw new Error(`Expected output to match: ${pattern}`);
+  }
+}
+
+function assertNotMatches(content, pattern) {
+  if (pattern.test(content)) {
+    throw new Error(`Expected output not to match: ${pattern}`);
+  }
+}
+
+function extractOpeningTagByClass(html, className) {
+  const pattern = new RegExp(
+    `<[a-z][a-z0-9-]*\\b(?=[^>]*\\bclass="[^"]*\\b${escapeRegExp(className)}\\b[^"]*")[^>]*>`,
+    "i"
+  );
+  const match = html.match(pattern);
+  if (!match) {
+    throw new Error(`Expected output to contain element with class: ${className}`);
+  }
+  return match[0];
+}
+
+function assertHeadingPrefixSpace(html) {
+  const pattern = /<span\b[^>]*\bclass="[^"]*\bmd2html-heading-prefix\b[^"]*"[^>]*>#(?:\u00a0|&nbsp;|&#x?0*a0;)<\/span>兼容标题/i;
+  assertMatches(html, pattern);
 }
 
 function assertImageWidth(html, src, width) {

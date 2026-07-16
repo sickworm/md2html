@@ -5,7 +5,7 @@
   "codeLineWrap": true,
   "longWordBreak": "break-word",
   "headingPrefixes": {
-    "h4": "#",
+    "h4": "#\u00a0",
     "h5": ""
   },
   "imageLinkStyle": "card",
